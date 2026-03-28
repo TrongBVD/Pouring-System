@@ -104,8 +104,8 @@
                                     </select>
                                 </div>
 
-                                <button type="submit" class="btn btn-secondary compact-submit-btn">Set Status</button>
-                            </div>
+                                <button type="submit" class="btn btn-secondary compact-submit-btn"><p>Set Status<p/></button>
+
                         </form>
                     </section>
                 </c:if>
@@ -114,8 +114,8 @@
             <section class="dashboard-card modules-card">
                 <div class="card-header-row compact-header-row">
                     <div>
-                        <h3>System Modules</h3>
-                        <p>All main functions in one screen.</p>
+                        <p>Smart Water System</p>
+
                     </div>
                 </div>
 

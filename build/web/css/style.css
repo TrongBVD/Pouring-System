@@ -126,7 +126,7 @@ body {
     border: none;
     border-radius: 10px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 27px;
     transition: 0.3s;
     margin-top: 10px;
 }
@@ -425,7 +425,7 @@ th {
 
 .link-title {
     color: #24384e;
-    font-size: 16px;
+    font-size: 32px;
     font-weight: 700;
     line-height: 1.25;
 }
@@ -880,21 +880,42 @@ th {
 }
 
 .compact-link-card .link-title {
-    font-size: 15px;
+    font-size: 30px;
     font-weight: 700;
     line-height: 1.2;
 }
 
 .compact-link-card .link-subtitle {
-    margin-top: 5px;
-    font-size: 12px;
+    margin-top: 6px;
+    font-size: 27px;
     line-height: 1.3;
 }
 
+.admin-shell h3,
+.dashboard-shell h3 {
+    font-size: 30px;
+}
+
+.admin-shell p,
+.dashboard-shell p {
+    font-size: 27px;
+}
+
+.status-form label {
+    font-size: 27px;
+}
 .compact-link-card .link-badge {
     position: absolute;
     top: 12px;
     right: 12px;
+}
+
+.dashboard-card p {
+    font-size: 27px;
+}
+
+.btn p {
+    font-size: 20px;
 }
 
 @media (max-width: 1400px) {
