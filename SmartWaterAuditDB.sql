@@ -181,6 +181,7 @@ CREATE TABLE PourSession (
             'NO_CUP',
             'TIMEOUT',
             'ERROR'
+            
         )),
 
     /* =======================
@@ -191,11 +192,14 @@ CREATE TABLE PourSession (
             'AUTO_PROFILE',     -- normal autonomous completion
             'MANUAL_BUTTON',    -- user manually stopped
             'TIMEOUT_FAILSAFE', -- safety timeout
-            'ERROR_ABORT'       -- error-triggered stop
-            
+            'ERROR_ABORT',       -- error-triggered stop
+            'REMOTE_APP',
+            'TANK_EMPTY'
         )),
     CONSTRAINT ck_ps_time_source
-        CHECK (time_source IN ('DEVICE_UTC','SERVER_INGEST'))
+        CHECK (time_source IN ('DEVICE_UTC','SERVER_INGEST')),
+    CONSTRAINT ck_ps_tank_empty_consistency
+        CHECK (NOT (stop_reason = 'TANK_EMPTY' AND result_code <> 'UNDER_POUR'))
 );
 CREATE TABLE PourSessionMeta (
     session_id INT PRIMARY KEY,
@@ -222,7 +226,8 @@ CREATE TABLE PourSessionMeta (
                 'OVER_POUR',
                 'NO_CUP',
                 'TIMEOUT',
-                'ERROR'
+                'ERROR',
+                'TANK_EMPTY'
             )
         )       
 );
@@ -266,9 +271,10 @@ CREATE TABLE Alert (
 
     CONSTRAINT ck_alert_type
         CHECK (alert_type IN (
-            'OVERPOUR',
+            'OVER_POUR',
             'FLOW_SPIKE',
             'CUP_MISSING',
+            'TANK_EMPTY',
             'ML_ANOMALY',
             'CALIBRATION_EXPIRED'
         )),
