@@ -698,6 +698,12 @@ BEGIN
             SET @risk_score = 0.80;
             SET @rule_summary = N'Cup missing detected (result_code=NO_CUP or cup_present=0).';
         END
+        ELSE IF (@stop_reason = N'TANK_EMPTY')
+        BEGIN
+            SET @alert_type = N'TANK_EMPTY';
+            SET @risk_score = 0.95;
+            SET @rule_summary = N'Water tank empty detected (result_code=TANK_EMPTY).';
+        END
         ELSE IF (
             @result_code = N'OVER_POUR'
             OR CONVERT(FLOAT, @actual_ml) > CONVERT(FLOAT, @target_ml + @tolerance_ml)
@@ -708,7 +714,7 @@ BEGIN
 
             DECLARE @tol_over FLOAT = NULLIF(CONVERT(FLOAT, @tolerance_ml), 0);
 
-            SET @alert_type = N'OVERPOUR';
+            SET @alert_type = N'OVER_POUR';
 
             SET @risk_score =
                 CASE
@@ -2512,16 +2518,35 @@ BEGIN
 END;
 GO
 CREATE OR ALTER PROCEDURE dbo.PourSession_ListByUserId
-    @session_id INT,
+    @date_from DATETIME2(7) = NULL,
+    @date_to   DATETIME2(7) = NULL,
     @actor_user_id INT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT *
-    FROM dbo.PourSession_Analysis
-    WHERE session_id = @session_id
-      AND user_id = @actor_user_id;
+    SELECT
+        s.*,
+        u.username,
+
+        -- PourSessionMeta (all fields)
+        pm.ml_eligible,
+        pm.ml_exclusion_reason,
+        pm.curated_result_code,
+        pm.curated_by_user_id,
+        pm.curated_at,
+        pm.curated_note
+
+    FROM dbo.PourSession_Analysis s
+    JOIN dbo.Users u
+      ON u.user_id = s.user_id
+    LEFT JOIN dbo.PourSessionMeta pm
+      ON pm.session_id = s.session_id
+    WHERE s.user_id = @actor_user_id
+      AND (@date_from IS NULL OR s.started_at >= @date_from)
+      AND (@date_to   IS NULL OR s.started_at <  @date_to)
+    ORDER BY s.started_at DESC;
+     
 END;
 GO
 CREATE OR ALTER PROCEDURE dbo.PourSession_ListAll
@@ -2549,6 +2574,36 @@ BEGIN
     LEFT JOIN dbo.PourSessionMeta pm
       ON pm.session_id = s.session_id
     WHERE (@date_from IS NULL OR s.started_at >= @date_from)
+      AND (@date_to   IS NULL OR s.started_at <  @date_to)
+    ORDER BY s.started_at DESC;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.PourSession_ListStats_ByUser
+    @actor_user_id INT,
+    @date_from DATETIME2(7) = NULL,
+    @date_to   DATETIME2(7) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        @actor_user_id AS user_id,
+
+        COUNT(*) AS total_sessions,
+        SUM(s.actual_ml) AS total_ml_all,
+        SUM(CASE 
+                WHEN s.result_code = 'SUCCESS' THEN s.actual_ml 
+                ELSE 0 
+            END) AS total_ml_success,
+
+        SUM(CASE 
+                WHEN s.result_code <> 'SUCCESS' THEN 1 
+                ELSE 0 
+            END) AS failed_sessions
+
+    FROM dbo.PourSession_Analysis s
+    WHERE s.user_id = @actor_user_id
+      AND (@date_from IS NULL OR s.started_at >= @date_from)
       AND (@date_to   IS NULL OR s.started_at <  @date_to)
     ORDER BY s.started_at DESC;
 END;
@@ -2855,7 +2910,7 @@ WHERE sensor_name = N'LOADCELL';
         EXEC dbo.Calibration_Create
     @device_id       = @new_device_id,
     @sensor_type_id  = @sensor_type_id,
-    @factor          = 1,
+    @factor          = 180,
     @offset          = 0,
     @created_by      = 2,                 -- SYSTEM
     @actor_role_name = N'SYSTEM',
@@ -2886,7 +2941,7 @@ WHERE st.sensor_name = N'FLOW';
 EXEC dbo.Calibration_Create
     @device_id       = @new_device_id,
     @sensor_type_id  = @sensor_type_id,
-    @factor          = 100,
+    @factor          = 450,
     @offset          = 0,
     @created_by      = 2,                 -- SYSTEM
     @actor_role_name = N'SYSTEM',
@@ -2998,8 +3053,8 @@ ON dbo.SensorLog(device_id, recorded_at);
 CREATE INDEX IX_SensorLog_SessionTime
 ON dbo.SensorLog(session_id, recorded_at)
 WHERE session_id IS NOT NULL;
-CREATE INDEX IX_SensorLog_SessionDeviceTime
-ON dbo.SensorLog(session_id, device_id, recorded_at);
+CREATE INDEX IX_PourSession_UserTime
+ON dbo.PourSession(user_id, started_at DESC);
 go
 EXEC Bootstrap_Init
 go
