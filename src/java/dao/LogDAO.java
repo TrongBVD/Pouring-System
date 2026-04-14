@@ -242,15 +242,49 @@ public class LogDAO {
     private String deriveResultCodeFromStopReason(String stopReason) {
         String normalized = stopReason == null ? "AUTO_PROFILE" : stopReason.trim().toUpperCase();
         switch (normalized) {
-            case "TIMEOUT_FAILSAFE":
-                return "TIMEOUT";
+            case "REMOTE_APP":
+                return "UNDER_POUR";
             case "ERROR_ABORT":
                 return "ERROR";
             case "MANUAL_BUTTON":
                 return "UNDER_POUR";
+            case "TANK_EMPTY":
+                return "ERROR";
             case "AUTO_PROFILE":
             default:
                 return "SUCCESS";
         }
+    }
+
+    public JsonObject getUserStats(int userId, java.time.LocalDateTime dateFrom, java.time.LocalDateTime dateTo) {
+        JsonObject result = new JsonObject();
+        result.addProperty("total_sessions", 0);
+        result.addProperty("total_ml_all", 0.0);
+        result.addProperty("total_ml_success", 0.0);
+        result.addProperty("failed_sessions", 0);
+
+        String sql = "{call PourSession_ListStats_ByUser(?, ?, ?)}"; // Sử dụng cú pháp {call ...} cho Stored Procedure
+
+        try ( Connection conn = DBContext.getConnection();  CallableStatement cs = conn.prepareCall(sql)) {
+
+            cs.setInt(1, userId);
+
+            // Chuyển đổi LocalDateTime sang java.sql.Timestamp cho an toàn tương thích với SQL Server
+            cs.setTimestamp(2, dateFrom != null ? java.sql.Timestamp.valueOf(dateFrom) : null);
+            cs.setTimestamp(3, dateTo != null ? java.sql.Timestamp.valueOf(dateTo) : null);
+
+            try ( ResultSet rs = cs.executeQuery()) {
+                if (rs.next()) {
+                    result.addProperty("total_sessions", rs.getInt("total_sessions"));
+                    result.addProperty("total_ml_all", rs.getDouble("total_ml_all"));
+                    result.addProperty("total_ml_success", rs.getDouble("total_ml_success"));
+                    result.addProperty("failed_sessions", rs.getInt("failed_sessions"));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
     }
 }

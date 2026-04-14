@@ -1,740 +1,249 @@
-body {
-font-family: 'Segoe UI', sans-serif;
-margin: 0;
-background-color: #f4f7f6;
-color: #333;
-}
-
-.container {
-max-width: 1200px;
-margin: 0 auto;
-padding: 20px;
-}
-
-/* Banner */
-.banner {
-background: #2c3e50;
-color: #fff;
-padding: 20px;
-display: flex;
-justify-content: space-between;
-align-items: center;
-box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.banner h2 {
-margin: 0;
-font-size: 24px;
-}
-
-.device-stats {
-display: flex;
-align-items: center;
-flex-wrap: wrap;
-gap: 14px;
-}
-
-.device-stats span {
-margin-left: 0;
-font-weight: 300;
-}
-
-.device-stats a {
-color: #d8e1ea;
-text-decoration: none;
-}
-
-.device-stats a:hover {
-color: #ffffff;
-}
-
-.banner-link-strong {
-color: #7fc1ff !important;
-font-weight: 600;
-}
-
-.status-badge {
-padding: 5px 10px;
-border-radius: 4px;
-font-weight: bold;
-font-size: 12px;
-text-transform: uppercase;
-}
-
-.status-ACTIVE {
-background: #2ecc71;
-color: white;
-}
-
-.status-OFFLINE {
-background: #95a5a6;
-color: white;
-}
-
-.status-ERROR {
-background: #e74c3c;
-color: white;
-}
-
-.status-MAINTENANCE {
-background: #f39c12;
-color: white;
-}
-
-/* Login/Register Form */
-.login-wrapper {
-height: 100vh;
-display: flex;
-justify-content: center;
-align-items: center;
-}
-
-.form-box {
-background: white;
-padding: 40px;
-width: 400px;
-border-radius: 8px;
-box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-text-align: center;
-}
-
-.form-group {
-margin-bottom: 15px;
-text-align: left;
-}
-
-.form-group label {
-display: block;
-margin-bottom: 5px;
-color: #7f8c8d;
-font-size: 14px;
-}
-
-.form-control {
-width: 100%;
-padding: 10px 12px;
-border: 1px solid #d7dde4;
-border-radius: 10px;
-box-sizing: border-box;
-font-size: 15px;
-background: #fff;
-}
-
-.btn {
-width: 100%;
-padding: 12px;
-border: none;
-border-radius: 10px;
-cursor: pointer;
-font-size: 16px;
-transition: 0.3s;
-margin-top: 10px;
-}
-
-.btn-primary {
-background: #3498db;
-color: white;
-}
-
-.btn-primary:hover {
-background: #2980b9;
-}
-
-.btn-secondary {
-background: #dbe2ea;
-color: #2c3e50;
-}
-
-.btn-secondary:hover {
-background: #c7d1db;
-}
-
-/* Generic */
-.main-content {
-margin-top: 40px;
-display: flex;
-flex-direction: column;
-align-items: center;
-}
-
-.pour-btn {
-width: 250px;
-height: 250px;
-border-radius: 50%;
-background: linear-gradient(135deg, #3498db, #2980b9);
-border: 10px solid #ecf0f1;
-color: white;
-display: flex;
-flex-direction: column;
-justify-content: center;
-align-items: center;
-box-shadow: 0 10px 30px rgba(52, 152, 219, 0.4);
-transition: transform 0.2s;
-cursor: pointer;
-}
-
-.pour-btn:active {
-transform: scale(0.95);
-}
-
-.pour-btn.disabled {
-background: #95a5a6;
-cursor: not-allowed;
-box-shadow: none;
-}
-
-.pour-text {
-font-size: 28px;
-font-weight: bold;
-text-transform: uppercase;
-}
-
-.pour-sub {
-font-size: 14px;
-opacity: 0.8;
-margin-top: 5px;
-}
-
-.admin-panel {
-background: white;
-padding: 20px;
-width: 100%;
-max-width: 800px;
-margin-top: 30px;
-border-radius: 8px;
-}
-
-.admin-row {
-display: flex;
-gap: 20px;
-margin-bottom: 15px;
-align-items: end;
-}
-
-table {
-width: 100%;
-border-collapse: collapse;
-margin-top: 20px;
-}
-
-th, td {
-padding: 12px;
-text-align: left;
-border-bottom: 1px solid #ddd;
-}
-
-th {
-background-color: #f8f9fa;
-}
-
-/* Dashboard-specific redesign */
-.dashboard-page {
-height: 100vh;
-overflow: hidden;
-background: linear-gradient(180deg, #edf2f6 0%, #f6f8fa 100%);
-}
-
-.dashboard-banner {
-min-height: 72px;
-padding: 14px 28px;
-}
-
-.dashboard-banner .banner-left,
-.dashboard-banner .banner-right {
-display: flex;
-flex-direction: column;
-justify-content: center;
-}
-
-.dashboard-banner h2 {
-font-size: 20px;
-margin-bottom: 6px;
-}
-
-.dashboard-shell {
-height: calc(100vh - 72px);
-padding: 16px 22px 18px;
-box-sizing: border-box;
-display: grid;
-grid-template-rows: auto 1fr;
-gap: 14px;
-}
-
-.dashboard-top-grid {
-display: grid;
-grid-template-columns: 1.15fr 0.85fr;
-gap: 14px;
-align-items: stretch;
-}
-
-.dashboard-bottom-grid {
-display: grid;
-grid-template-columns: 1fr;
-gap: 14px;
-min-height: 0;
-}
-
-.dashboard-card {
-background: rgba(255,255,255,0.98);
-border: 1px solid #dfe7ef;
-border-radius: 18px;
-padding: 18px 20px;
-box-shadow: 0 12px 28px rgba(31, 50, 73, 0.07);
-min-height: 0;
-}
-
-.dashboard-card h3 {
-margin: 0;
-font-size: 19px;
-color: #223246;
-}
-
-.dashboard-card p {
-margin: 6px 0 0;
-color: #748395;
-font-size: 14px;
-line-height: 1.4;
-}
-
-.card-header-row {
-display: flex;
-justify-content: space-between;
-align-items: flex-start;
-margin-bottom: 12px;
-gap: 10px;
-}
-
-.action-card {
-display: flex;
-flex-direction: column;
-justify-content: center;
-}
-
-.action-button-row {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 14px;
-align-items: center;
-}
-
-.action-btn {
-min-height: 118px;
-border: none;
-border-radius: 18px;
-font-size: 28px;
-font-weight: 800;
-letter-spacing: 1px;
-cursor: pointer;
-transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-}
-
-.action-btn:active {
-transform: translateY(1px);
-}
-
-.action-btn-start {
-background: linear-gradient(135deg, #3da4f0, #2479d3);
-color: #fff;
-box-shadow: 0 14px 24px rgba(36, 121, 211, 0.22);
-}
-
-.action-btn-stop {
-background: linear-gradient(135deg, #d7dde4, #bec9d5);
-color: #6c7886;
-box-shadow: inset 0 0 0 1px rgba(92, 109, 128, 0.08);
-cursor: default;
-}
-
-.action-btn.is-disabled,
-.action-btn:disabled {
-opacity: 0.45;
-pointer-events: none;
-box-shadow: none;
-}
-
-.observer-card {
-display: flex;
-flex-direction: column;
-justify-content: center;
-}
-
-.admin-control-card .status-form,
-.config-card .status-form {
-margin-top: 2px;
-}
-
-.status-form-row {
-display: grid;
-grid-template-columns: 1fr auto;
-gap: 12px;
-align-items: end;
-}
-
-.compact-group {
-margin-bottom: 0;
-}
-
-.compact-submit-btn {
-width: auto;
-min-width: 120px;
-margin-top: 0;
-height: 42px;
-padding: 0 18px;
-}
-
-.records-card,
-.config-card {
-display: flex;
-flex-direction: column;
-}
-
-.config-card {
-padding-bottom: 16px;
-}
-
-.dashboard-link-grid {
-display: grid;
-grid-template-columns: repeat(6, minmax(0, 1fr));
-gap: 12px;
-min-height: 0;
-}
-
-.single-link-grid {
-grid-template-columns: minmax(0, 260px);
-}
-
-.dashboard-link-card {
-position: relative;
-min-height: 82px;
-padding: 14px 14px;
-border-radius: 14px;
-background: linear-gradient(180deg, #f8fbfd 0%, #eef3f7 100%);
-border: 1px solid #dbe5ee;
-display: flex;
-flex-direction: column;
-justify-content: center;
-text-decoration: none;
-transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-}
-
-.dashboard-link-card:hover {
-transform: translateY(-2px);
-border-color: #b8cbe0;
-box-shadow: 0 10px 18px rgba(50, 84, 118, 0.12);
-}
-
-.link-title {
-color: #24384e;
-font-size: 16px;
-font-weight: 700;
-line-height: 1.25;
-}
-
-.link-subtitle {
-margin-top: 5px;
-color: #6f8091;
-font-size: 13px;
-line-height: 1.35;
-}
-
-.link-badge {
-position: absolute;
-top: 10px;
-right: 10px;
-min-width: 22px;
-height: 22px;
-padding: 0 6px;
-border-radius: 999px;
-background: #d94b4b;
-color: #fff;
-font-size: 12px;
-font-weight: 700;
-display: inline-flex;
-align-items: center;
-justify-content: center;
-}
-
-.toast-area {
-position: fixed;
-top: 18px;
-right: 22px;
-z-index: 9999;
-display: flex;
-flex-direction: column;
-gap: 10px;
-pointer-events: none;
-}
-
-.app-toast {
-min-width: 280px;
-max-width: 420px;
-padding: 14px 16px;
-border-radius: 14px;
-color: #fff;
-font-size: 14px;
-line-height: 1.4;
-box-shadow: 0 14px 30px rgba(25, 36, 48, 0.22);
-opacity: 0;
-transform: translateY(-8px);
-transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-.app-toast.show {
-opacity: 1;
-transform: translateY(0);
-}
-
-.app-toast.success {
-background: #1f9d63;
-}
-
-.app-toast.warning {
-background: #c58a1d;
-}
-
-.app-toast.error {
-background: #c94949;
-}
-
-.app-toast.info {
-background: #355c8a;
-}
-
-@media (max-width: 1400px) {
-.dashboard-link-grid {
-grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.action-btn {
-min-height: 108px;
-font-size: 24px;
-}
-}
-
-@media (max-width: 1100px) {
-.dashboard-page {
-overflow: auto;
-height: auto;
-}
-
-.dashboard-shell {
-height: auto;
-grid-template-rows: auto auto;
-}
-
-.dashboard-top-grid {
-grid-template-columns: 1fr;
-}
-
-.dashboard-link-grid {
-grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.action-btn {
-min-height: 110px;
-font-size: 24px;
-}
-}
-
-@media (max-width: 760px) {
-.dashboard-banner {
-padding: 16px 18px;
-align-items: flex-start;
-gap: 12px;
-}
-
-.dashboard-shell {
-padding: 14px;
-}
-
-.action-button-row,
-.status-form-row,
-.dashboard-link-grid {
-grid-template-columns: 1fr;
-}
-
-.action-btn {
-min-height: 96px;
-font-size: 22px;
-}
-
-.app-toast {
-min-width: 220px;
-max-width: calc(100vw - 30px);
-}
-}
-
-
-
-/* Admin users page */
-.admin-users-page {
-min-height: 100vh;
-background: linear-gradient(180deg, #eef3f7 0%, #f7f9fb 100%);
-}
-
-.admin-users-shell {
-max-width: 1240px;
-margin: 0 auto;
-padding: 28px 24px 42px;
-}
-
-.admin-users-panel,
-.admin-users-table-wrap {
-background: rgba(255,255,255,0.98);
-border: 1px solid #dfe7ef;
-border-radius: 22px;
-box-shadow: 0 16px 36px rgba(31, 50, 73, 0.08);
-}
-
-.admin-users-panel {
-padding: 22px;
-margin-bottom: 22px;
-}
-
-.admin-users-panel h3 {
-margin: 0 0 18px;
-font-size: 30px;
-color: #213247;
-}
-
-.admin-users-form {
-display: grid;
-grid-template-columns: 1.2fr 1.2fr 0.7fr auto;
-gap: 14px;
-align-items: end;
-}
-
-.admin-users-table-wrap {
-overflow: hidden;
-}
-
-.admin-users-table {
-width: 100%;
-border-collapse: separate;
-border-spacing: 0;
-margin: 0;
-}
-
-.admin-users-table thead th {
-background: #f3f7fb;
-color: #24384e;
-font-size: 15px;
-font-weight: 700;
-padding: 18px 16px;
-border-bottom: 1px solid #e3ebf2;
-}
-
-.admin-users-table tbody td {
-padding: 18px 16px;
-font-size: 16px;
-vertical-align: middle;
-border-bottom: 1px solid #edf2f7;
-}
-
-.admin-users-table tbody tr:last-child td {
-border-bottom: none;
-}
-
-.admin-users-name {
-font-weight: 700;
-color: #24384e;
-}
-
-.st-ACTIVE {
-background: #dff3e5;
-color: #177245;
-}
-
-.st-LOCKED {
-background: #fff4d6;
-color: #946200;
-}
-
-.st-DISABLED {
-background: #fbe1e1;
-color: #b23b3b;
-}
-
-.user-actions {
-display: flex;
-flex-wrap: wrap;
-gap: 10px;
-align-items: center;
-}
-
-.user-action-btn {
-min-width: 104px;
-padding: 11px 16px;
-border: none;
-border-radius: 12px;
-cursor: pointer;
-font-size: 14px;
-font-weight: 700;
-line-height: 1;
-transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
-}
-
-.user-action-btn:hover {
-transform: translateY(-1px);
-}
-
-.user-action-btn.lock {
-background: #f1c40f;
-color: #ffffff;
-}
-
-.user-action-btn.disable {
-background: #e74c3c;
-color: #ffffff;
-}
-
-.user-action-btn.activate {
-background: #2ecc71;
-color: #ffffff;
-}
-
-.muted-note {
-color: #99a7b5;
-font-size: 13px;
-font-weight: 600;
-}
-
-.feedback-message {
-grid-column: 1 / -1;
-margin: 2px 0 0;
-font-size: 14px;
-font-weight: 600;
-}
-
-.feedback-message.error {
-color: #c94949;
-}
-
-.feedback-message.success {
-color: #1f9d63;
-}
-
-@media (max-width: 1100px) {
-.admin-users-form {
-grid-template-columns: 1fr 1fr;
-}
-}
-
-@media (max-width: 760px) {
-.admin-users-shell {
-padding: 18px 14px 28px;
-}
-
-.admin-users-form {
-grid-template-columns: 1fr;
-}
-
-.admin-users-panel h3 {
-font-size: 24px;
-}
-
-.admin-users-table {
-display: block;
-overflow-x: auto;
-}
-}
+<%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>User Management - Smart Water</title>
+        <link rel="stylesheet" href="css/style.css">
+        <style>
+            /* Reset body cho layout full-width */
+            body {
+                background-color: #f4f7f6;
+                margin: 0;
+                padding: 0;
+                font-family: 'Segoe UI', sans-serif;
+            }
+
+            /* Container mở rộng toàn màn hình với khoảng cách lề */
+            .admin-users-container {
+                width: 100%;
+                padding: 30px;
+                box-sizing: border-box;
+            }
+
+            /* Box panel màu trắng */
+            .admin-panel-full {
+                background: white;
+                padding: 25px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                margin-bottom: 25px;
+            }
+
+            /* --- FORM TẠO MỚI (FLEXBOX ALIGNMENT) --- */
+            /* Sử dụng align-items: stretch để tất cả các phần tử con có cùng chiều cao */
+            .form-row-inline {
+                display: flex;
+                gap: 15px;
+                align-items: stretch;
+                margin-top: 15px;
+            }
+            .form-control-inline {
+                flex: 1;
+                padding: 10px 15px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 14px;
+                box-sizing: border-box;
+                outline: none;
+            }
+            .form-control-inline:focus {
+                border-color: #3498db;
+            }
+
+            /* Nút Create tự động ăn theo chiều cao của ô input nhờ Flexbox */
+            .btn-create-inline {
+                padding: 0 30px;
+                background: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 15px;
+                cursor: pointer;
+                transition: 0.2s ease;
+            }
+            .btn-create-inline:hover {
+                background: #2980b9;
+            }
+
+            /* --- BẢNG DỮ LIỆU FULL WIDTH --- */
+            table.full-width-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .full-width-table th {
+                background: #f8f9fa;
+                padding: 16px 25px;
+                text-align: left;
+                border-bottom: 2px solid #edf2f7;
+                color: #2c3e50;
+                font-weight: 600;
+            }
+            .full-width-table td {
+                padding: 16px 25px;
+                border-bottom: 1px solid #edf2f7;
+                vertical-align: middle;
+            }
+
+            /* --- NÚT ACTION TRONG BẢNG --- */
+            .table-action-form {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                margin: 0;
+            }
+            .table-btn {
+                padding: 7px 14px;
+                border-radius: 6px;
+                border: none;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                color: #fff;
+                transition: transform 0.2s ease, opacity 0.2s ease;
+            }
+            .table-btn:hover {
+                transform: translateY(-1px);
+                opacity: 0.9;
+            }
+            .btn-lock {
+                background: #f39c12;
+            }
+            .btn-disable {
+                background: #e74c3c;
+            }
+            .btn-active {
+                background: #2ecc71;
+            }
+
+            /* --- STATUS BADGES --- */
+            .status-badge {
+                display: inline-block;
+                padding: 5px 12px;
+                border-radius: 20px;
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+            }
+            .st-ACTIVE {
+                background: #d4edda;
+                color: #155724;
+            }
+            .st-LOCKED {
+                background: #fff3cd;
+                color: #856404;
+            }
+            .st-DISABLED {
+                background: #f8d7da;
+                color: #721c24;
+            }
+
+            /* --- MESSAGES --- */
+            .msg-error {
+                color: #e74c3c;
+                font-weight: 600;
+                margin-top: 15px;
+                font-size: 14px;
+            }
+            .msg-success {
+                color: #2ecc71;
+                font-weight: 600;
+                margin-top: 15px;
+                font-size: 14px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="banner">
+            <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
+                <h2 style="margin: 0;">User Management</h2>
+                <div class="device-stats" style="margin: 0;">
+                    <span>Admin: <strong>${sessionScope.LOGIN_USER.username}</strong></span> | 
+                    <a href="DashboardController" style="color: #bdc3c7; text-decoration: none; font-weight: 500;">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-users-container">
+            <div class="admin-panel-full">
+                <h3 style="margin-top: 0; color: #2c3e50;">Create New Staff</h3>
+                <form action="AdminController" method="POST">
+                    <input type="hidden" name="action" value="create_internal_user">
+
+                    <div class="form-row-inline">
+                        <input type="text" name="new_user" placeholder="Username" class="form-control-inline" required>
+                        <input type="password" name="new_pass" placeholder="Password" class="form-control-inline" required>
+                        <select name="new_role" class="form-control-inline" required>
+                            <option value="" disabled selected>-- Select Role --</option>
+                            <option value="ADMIN">Admin</option>
+                            <option value="TECHNICIAN">Technician</option> 
+                            <option value="AUDITOR">Auditor</option>
+                            <option value="OPERATOR">Operator</option>
+                        </select>
+                        <button type="submit" class="btn-create-inline">Create</button>
+                    </div>
+
+                    <c:if test="${not empty error}">
+                        <div class="msg-error">${error}</div>
+                    </c:if>
+                    <c:if test="${not empty success}">
+                        <div class="msg-success">${success}</div>
+                    </c:if>
+                </form>
+            </div>
+
+            <div class="admin-panel-full" style="padding: 0; overflow: hidden;">
+                <table class="full-width-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <c:forEach var="u" items="${USER_LIST}">
+                            <tr>
+                                <td>#${u.userId}</td>
+                                <td><strong>${u.username}</strong></td>
+                                <td>${u.role}</td>
+                                <td><span class="status-badge st-${u.status}">${u.status}</span></td>
+                                <td>
+                                    <c:choose>
+                                        <c:when test="${u.userId == sessionScope.LOGIN_USER.userId}">
+                                            <span style="color:#95a5a6; font-size:13px; font-style: italic;">(You)</span>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <form action="AdminController" method="POST" class="table-action-form">
+                                                <input type="hidden" name="action" value="toggle_user">
+                                                <input type="hidden" name="uid" value="${u.userId}">
+
+                                                <c:choose>
+                                                    <c:when test="${u.status == 'ACTIVE'}">
+                                                        <button name="status" value="LOCKED" class="table-btn btn-lock">Lock</button>
+                                                        <button name="status" value="DISABLED" class="table-btn btn-disable">Disable</button>
+                                                    </c:when>
+                                                    <c:when test="${u.status == 'LOCKED'}">
+                                                        <button name="status" value="ACTIVE" class="table-btn btn-active">Activate</button>
+                                                        <button name="status" value="DISABLED" class="table-btn btn-disable">Disable</button>
+                                                    </c:when>
+                                                    <c:when test="${u.status == 'DISABLED'}">
+                                                        <span style="color:#e74c3c; font-weight:bold; font-size:13px; padding: 6px 0;">(Disabled)</span>
+                                                    </c:when>
+                                                </c:choose>
+                                            </form>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </td>
+                            </tr>
+                        </c:forEach>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>

@@ -82,9 +82,45 @@ public class PourController extends HttpServlet {
         }
 
         String action = request.getParameter("action");
+        if ("stop_pour".equals(action)) {
+            try {
+                URL url = new URL(ESP_IP + "/stop");
+                HttpURLConnection con = (HttpURLConnection) url.openConnection();
+                con.setRequestMethod("POST");
+                con.setConnectTimeout(1500);
+                if (con.getResponseCode() == 200) {
+                    response.getWriter().write("STOP_OK");
+                } else {
+                    response.getWriter().write("STOP_FAIL");
+                }
+            } catch (Exception e) {
+                response.getWriter().write("STOP_ERROR");
+            }
+            return;
+        }
+
         if ("start_pour".equals(action)) {
             try {
-                URL url = new URL(ESP_IP + "/pour");
+                // Đọc target_ml từ Web gửi lên
+                String targetMl = request.getParameter("target_ml");
+                if (targetMl == null || targetMl.isEmpty()) {
+                    targetMl = "360"; // Dự phòng an toàn
+                }
+
+                // === BẮT ĐẦU THÊM MỚI: ÁNH XẠ PROFILE_ID ===
+                String profileId = "4"; // Mặc định 360ml là profile số 4
+                if ("90".equals(targetMl)) {
+                    profileId = "1";
+                } else if ("180".equals(targetMl)) {
+                    profileId = "2";
+                } else if ("270".equals(targetMl)) {
+                    profileId = "3";
+                }
+                // ===========================================
+
+                // Đính kèm CẢ target_ml VÀ profile_id vào URL cho ESP32
+                URL url = new URL(ESP_IP + "/pour?target_ml=" + targetMl + "&profile_id=" + profileId);
+
                 HttpURLConnection con = (HttpURLConnection) url.openConnection();
                 con.setRequestMethod("POST");
                 con.setDoOutput(true);
@@ -92,9 +128,11 @@ public class PourController extends HttpServlet {
                 con.setReadTimeout(2500);
                 con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
 
+                // Các biến còn lại vẫn gửi trong Body bình thường
                 String body = "user_id=" + URLEncoder.encode(String.valueOf(user.getUserId()), "UTF-8")
                         + "&username=" + URLEncoder.encode(user.getUsername() == null ? "" : user.getUsername(), "UTF-8")
                         + "&start_reason=" + URLEncoder.encode("REMOTE_APP", "UTF-8");
+
                 con.getOutputStream().write(body.getBytes("UTF-8"));
 
                 int code = con.getResponseCode();
@@ -102,6 +140,14 @@ public class PourController extends HttpServlet {
                     response.getWriter().write("OK");
                 } else if (code == 403) {
                     response.getWriter().write("MAINTENANCE");
+                } else if (code == 400) {
+                    BufferedReader in = new BufferedReader(new InputStreamReader(con.getErrorStream()));
+                    String errorText = in.readLine();
+                    if ("BUSY".equals(errorText)) {
+                        response.getWriter().write("BUSY");
+                    } else {
+                        response.getWriter().write("FAIL_OR_BUSY");
+                    }
                 } else {
                     response.getWriter().write("FAIL_OR_BUSY");
                 }

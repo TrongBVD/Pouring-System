@@ -6,6 +6,34 @@
         <meta charset="UTF-8">
         <title>Dashboard - Smart Water</title>
         <link rel="stylesheet" href="css/style.css">
+        <style>
+            .radio-group {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            .radio-group label {
+                flex: 1;
+                text-align: center;
+                background: #fff;
+                border: 2px solid #ddd;
+                padding: 10px 0;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: bold;
+                color: #555;
+                transition: all 0.2s ease;
+            }
+            .radio-group input[type="radio"] {
+                display: none;
+            }
+            .radio-group input[type="radio"]:checked + label {
+                border-color: #3498db;
+                background: #ebf5fb;
+                color: #2980b9;
+                box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+            }
+        </style>
     </head>
     <body class="dashboard-page">
         <div class="banner dashboard-banner">
@@ -48,6 +76,23 @@
                                 </div>
                             </div>
 
+                            <div style="margin: 15px 20px;">
+                                <p style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Select Volume (ml):</p>
+                                <div class="radio-group">
+                                    <input type="radio" id="vol90" name="target_ml" value="90">
+                                    <label for="vol90">90</label>
+
+                                    <input type="radio" id="vol180" name="target_ml" value="180">
+                                    <label for="vol180">180</label>
+
+                                    <input type="radio" id="vol270" name="target_ml" value="270">
+                                    <label for="vol270">270</label>
+
+                                    <input type="radio" id="vol360" name="target_ml" value="360" checked>
+                                    <label for="vol360">360</label>
+                                </div>
+                            </div>
+
                             <div class="action-button-row compact-action-row">
                                 <button
                                     id="btnStart"
@@ -62,6 +107,7 @@
                                     id="btnStop"
                                     type="button"
                                     class="action-btn action-btn-stop"
+                                    onclick="triggerStop()"
                                     disabled>
                                     STOP
                                 </button>
@@ -104,8 +150,8 @@
                                     </select>
                                 </div>
 
-                                <button type="submit" class="btn btn-secondary compact-submit-btn"><p>Set Status<p/></button>
-
+                                <button type="submit" class="btn btn-secondary compact-submit-btn"><p>Set Status</p></button>
+                            </div>
                         </form>
                     </section>
                 </c:if>
@@ -115,7 +161,6 @@
                 <div class="card-header-row compact-header-row">
                     <div>
                         <p>Smart Water System</p>
-
                     </div>
                 </div>
 
@@ -127,44 +172,55 @@
                         </a>
                     </c:if>
 
-                    <c:if test="${sessionScope.LOGIN_USER.role != 'GUEST' && sessionScope.LOGIN_USER.role != 'OPERATOR'}">
+                    <c:if test="${sessionScope.LOGIN_USER.role != 'GUEST'}">
                         <a href="PourHistoryController" class="dashboard-link-card compact-link-card">
                             <span class="link-title">Pour History</span>
                             <span class="link-subtitle">Water pouring history</span>
                         </a>
 
-                        <a href="PourSessionMetaController" class="dashboard-link-card compact-link-card">
-                            <span class="link-title">Pour Session Meta</span>
-                            <span class="link-subtitle">View or adjust metadata</span>
-                        </a>
-
-                        <c:if test="${sessionScope.LOGIN_USER.role == 'AUDITOR' || sessionScope.LOGIN_USER.role == 'ADMIN' || sessionScope.LOGIN_USER.role == 'TECHNICIAN'}">
-                            <a href="SensorLogController" class="dashboard-link-card compact-link-card">
-                                <span class="link-title">Sensor Logs</span>
-                                <span class="link-subtitle">Raw data and metadata</span>
+                        <c:if test="${sessionScope.LOGIN_USER.role != 'GUEST' && sessionScope.LOGIN_USER.role != 'OPERATOR'}">
+                            <a href="PourSessionMetaController" class="dashboard-link-card compact-link-card">
+                                <span class="link-title">Pour Session Meta</span>
+                                <span class="link-subtitle">View or adjust metadata</span>
                             </a>
 
-                            <a href="SensorHealthController" class="dashboard-link-card compact-link-card">
-                                <span class="link-title">Health Report</span>
-                                <span class="link-subtitle">Device metrics every 5 minutes</span>
-                            </a>
-
-                            <c:if test="${sessionScope.LOGIN_USER.role == 'AUDITOR' || sessionScope.LOGIN_USER.role == 'ADMIN'}">
-                                <a href="AuditLogController" class="dashboard-link-card compact-link-card">
-                                    <span class="link-title">Full Audit Logs</span>
-                                    <span class="link-subtitle">Blockchain hash chain</span>
+                            <c:if test="${sessionScope.LOGIN_USER.role == 'AUDITOR' || sessionScope.LOGIN_USER.role == 'ADMIN' || sessionScope.LOGIN_USER.role == 'TECHNICIAN'}">
+                                <a href="SensorLogController" class="dashboard-link-card compact-link-card">
+                                    <span class="link-title">Sensor Logs</span>
+                                    <span class="link-subtitle">Raw data and metadata</span>
                                 </a>
-                            </c:if>
 
-                            <c:if test="${sessionScope.LOGIN_USER.role == 'ADMIN' || sessionScope.LOGIN_USER.role == 'TECHNICIAN'}">
-                                <a href="MaintenanceController" class="dashboard-link-card compact-link-card maintenance-link-card">
-                                    <span class="link-title">Maintenance</span>
-                                    <span class="link-subtitle">Maintenance and issue handling</span>
-
-                                    <c:if test="${ACTIVE_ALERT_COUNT > 0}">
-                                        <span class="link-badge">${ACTIVE_ALERT_COUNT}</span>
-                                    </c:if>
+                                <a href="SensorHealthController" class="dashboard-link-card compact-link-card">
+                                    <span class="link-title">Health Report</span>
+                                    <span class="link-subtitle">Device metrics every 5 minutes</span>
                                 </a>
+
+                                <c:if test="${sessionScope.LOGIN_USER.role == 'AUDITOR' || sessionScope.LOGIN_USER.role == 'ADMIN'}">
+                                    <a href="AuditLogController" class="dashboard-link-card compact-link-card">
+                                        <span class="link-title">Full Audit Logs</span>
+                                        <span class="link-subtitle">Blockchain hash chain</span>
+                                    </a>
+                                </c:if>
+
+                                <c:if test="${sessionScope.LOGIN_USER.role == 'ADMIN' || sessionScope.LOGIN_USER.role == 'TECHNICIAN'}">
+                                    <a href="MaintenanceController" class="dashboard-link-card compact-link-card maintenance-link-card">
+                                        <span class="link-title">Maintenance</span>
+                                        <span class="link-subtitle">Maintenance and issue handling</span>
+
+                                        <c:if test="${ACTIVE_ALERT_COUNT > 0}">
+                                            <span class="link-badge">${ACTIVE_ALERT_COUNT}</span>
+                                        </c:if>
+                                    </a>
+                                </c:if>
+
+                                <c:if test="${sessionScope.LOGIN_USER.role == 'AUDITOR' || sessionScope.LOGIN_USER.role == 'ADMIN' || sessionScope.LOGIN_USER.role == 'TECHNICIAN'}">
+
+                                    <a href="StatisticController" class="dashboard-link-card compact-link-card">
+                                        <span class="link-title">My Pouring Stats</span>
+                                        <span class="link-subtitle">View water consumption data</span>
+                                    </a>
+
+                                </c:if>
                             </c:if>
                         </c:if>
                     </c:if>
@@ -179,6 +235,9 @@
 
             function showToast(message, type) {
                 const area = document.getElementById('toastArea');
+                if (!area)
+                    return;
+
                 const toast = document.createElement('div');
                 toast.className = 'app-toast ' + (type || 'info');
                 toast.textContent = message;
@@ -198,20 +257,28 @@
                 }, 3000);
             }
 
-            function setStartEnabled(enabled) {
-                if (!btnStart)
-                    return;
-                btnStart.disabled = !enabled;
+            function setButtonsEnabled(enabled) {
+                if (btnStart) {
+                    btnStart.disabled = !enabled;
+                    if (enabled) {
+                        btnStart.classList.remove('is-disabled');
+                    } else {
+                        btnStart.classList.add('is-disabled');
+                    }
+                }
 
-                if (enabled) {
-                    btnStart.classList.remove('is-disabled');
-                } else {
-                    btnStart.classList.add('is-disabled');
+                if (btnStop) {
+                    btnStop.disabled = !enabled;
+                    if (enabled) {
+                        btnStop.classList.remove('is-disabled');
+                    } else {
+                        btnStop.classList.add('is-disabled');
+                    }
                 }
             }
 
             function syncDeviceState() {
-                if (!btnStart)
+                if (!btnStart && !btnStop)
                     return;
 
                 fetch('PourController?action=ping')
@@ -220,17 +287,17 @@
                             const state = data.trim();
 
                             if (state === 'OK_ACTIVE') {
-                                setStartEnabled(true);
+                                setButtonsEnabled(true);
                                 if (lastDeviceState !== 'OK_ACTIVE' && lastDeviceState !== '') {
                                     showToast('The device connection has been restored.', 'success');
                                 }
                             } else if (state === 'OK_MAINTENANCE') {
-                                setStartEnabled(false);
+                                setButtonsEnabled(false);
                                 if (lastDeviceState !== 'OK_MAINTENANCE') {
                                     showToast('The system is currently in maintenance mode.', 'warning');
                                 }
                             } else {
-                                setStartEnabled(false);
+                                setButtonsEnabled(false);
                                 if (lastDeviceState !== 'UNAVAILABLE') {
                                     showToast('Unable to connect to the ESP32 device right now.', 'error');
                                 }
@@ -239,7 +306,7 @@
                             lastDeviceState = (state === 'OK_ACTIVE' || state === 'OK_MAINTENANCE') ? state : 'UNAVAILABLE';
                         })
                         .catch(() => {
-                            setStartEnabled(false);
+                            setButtonsEnabled(false);
                             if (lastDeviceState !== 'UNAVAILABLE') {
                                 showToast('Unable to connect to the ESP32 device right now.', 'error');
                             }
@@ -248,22 +315,32 @@
             }
 
             function triggerPour() {
-                if (!btnStart || btnStart.disabled) {
+                if (!btnStart || btnStart.disabled)
                     return;
+
+                setButtonsEnabled(false);
+
+                // CÁCH MỚI LẤY GIÁ TRỊ RADIO
+                let selectedMl = '360';
+                const radioButtons = document.querySelectorAll('input[name="target_ml"]');
+                for (const rb of radioButtons) {
+                    if (rb.checked) {
+                        selectedMl = rb.value;
+                        break;
+                    }
                 }
 
-                btnStart.disabled = true;
-                btnStart.classList.add('is-disabled');
-
-                fetch('PourController?action=start_pour', {method: 'POST'})
+                fetch('PourController?action=start_pour&target_ml=' + selectedMl, {method: 'POST'})
                         .then(response => response.text())
                         .then(data => {
                             const result = data.trim();
 
                             if (result === 'OK') {
-                                showToast('Pour command sent successfully.', 'success');
+                                showToast('Pour command sent for ' + selectedMl + 'ml.', 'success');
                             } else if (result === 'MAINTENANCE') {
                                 showToast('The system is locked for maintenance and cannot pour.', 'warning');
+                            } else if (result === 'BUSY') {
+                                showToast('Hệ thống đang bận phục vụ người khác!', 'warning');
                             } else {
                                 showToast('The device is busy or no cup has been placed.', 'error');
                             }
@@ -276,18 +353,45 @@
                         });
             }
 
+            function triggerStop() {
+                if (!btnStop || btnStop.disabled)
+                    return;
+
+                setButtonsEnabled(false);
+
+                fetch('PourController?action=stop_pour', {method: 'POST'})
+                        .then(response => response.text())
+                        .then(data => {
+                            const result = data.trim();
+
+                            if (result === 'STOP_OK') {
+                                showToast('EMERGENCY STOP COMMAND SENT!', 'warning');
+                            } else {
+                                showToast('Failed to send stop command.', 'error');
+                            }
+
+                            syncDeviceState();
+                        })
+                        .catch(() => {
+                            showToast('Unable to send the stop command to the device. Network error.', 'error');
+                            syncDeviceState();
+                        });
+            }
+
+            // Gắn event listener chuẩn
             document.addEventListener('DOMContentLoaded', function () {
                 syncDeviceState();
                 setInterval(syncDeviceState, 3000);
+            });
 
+            // TÁCH JSTL RA KHỎI EVENT LISTENER ĐỂ TRÁNH LỖI CÚ PHÁP
             <c:if test="${not empty param.error}">
-                showToast('Error: ${param.error}', 'error');
+            setTimeout(() => showToast('Error: ${param.error}', 'error'), 500);
             </c:if>
 
             <c:if test="${not empty param.msg && param.msg == 'success'}">
-                showToast('Updated successfully.', 'success');
+            setTimeout(() => showToast('Updated successfully.', 'success'), 500);
             </c:if>
-            });
         </script>
     </body>
 </html>

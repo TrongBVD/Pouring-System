@@ -27,8 +27,13 @@ public class User {
     // Ví dụ gọi: user.hasPermission("DEVICE", "WRITE")
     public boolean hasPermission(String module, String action) {
         if ("ADMIN".equals(this.role)) {
-            return true; // Admin chấp hết
+            return true; // Admin có toàn quyền
         }
+
+        if (this.permissions == null || module == null || action == null) {
+            return false;
+        }
+
         return permissions.contains(module + ":" + action);
     }
 

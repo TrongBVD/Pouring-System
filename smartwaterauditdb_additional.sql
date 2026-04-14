@@ -2520,7 +2520,7 @@ GO
 CREATE OR ALTER PROCEDURE dbo.PourSession_ListByUserId
     @date_from DATETIME2(7) = NULL,
     @date_to   DATETIME2(7) = NULL,
-    @actor_user_id INT
+    @target_user_id INT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -2542,7 +2542,7 @@ BEGIN
       ON u.user_id = s.user_id
     LEFT JOIN dbo.PourSessionMeta pm
       ON pm.session_id = s.session_id
-    WHERE s.user_id = @actor_user_id
+    WHERE s.user_id = @target_user_id
       AND (@date_from IS NULL OR s.started_at >= @date_from)
       AND (@date_to   IS NULL OR s.started_at <  @date_to)
     ORDER BY s.started_at DESC;
@@ -2605,7 +2605,6 @@ BEGIN
     WHERE s.user_id = @actor_user_id
       AND (@date_from IS NULL OR s.started_at >= @date_from)
       AND (@date_to   IS NULL OR s.started_at <  @date_to)
-    ORDER BY s.started_at DESC;
 END;
 GO
 CREATE OR ALTER PROCEDURE dbo.Bootstrap_Init
@@ -2950,16 +2949,59 @@ EXEC dbo.Calibration_Create
     @audit_id        = @audit_id OUTPUT,
     @chain_hash      = @chain_hash OUTPUT;
 
+    -- 90ml profile
+EXEC dbo.PourProfile_Create
+    @name = N'DEFAULT_90',
+    @target_ml = 90,
+    @tolerance_ml = 15,
+    @max_duration_s = 10,
+    @max_flow_rate = 65,
+    @actor_user_id = 2,
+    @actor_role_name = N'SYSTEM',
+    @reason = N'Bootstrap default profile (90ml)',
+    @new_profile_id = @new_profile_id OUTPUT,
+    @audit_id = @audit_id OUTPUT,
+    @chain_hash = @chain_hash OUTPUT;
 
-        EXEC dbo.PourProfile_Create
+
+-- 180ml profile
+EXEC dbo.PourProfile_Create
+    @name = N'DEFAULT_180',
+    @target_ml = 180,
+    @tolerance_ml = 15,
+    @max_duration_s = 19,
+    @max_flow_rate = 65,
+    @actor_user_id = 2,
+    @actor_role_name = N'SYSTEM',
+    @reason = N'Bootstrap default profile (180ml)',
+    @new_profile_id = @new_profile_id OUTPUT,
+    @audit_id = @audit_id OUTPUT,
+    @chain_hash = @chain_hash OUTPUT;
+
+
+-- 270ml profile
+EXEC dbo.PourProfile_Create
+    @name = N'DEFAULT_270',
+    @target_ml = 270,
+    @tolerance_ml = 15,
+    @max_duration_s = 26,
+    @max_flow_rate = 65,
+    @actor_user_id = 2,
+    @actor_role_name = N'SYSTEM',
+    @reason = N'Bootstrap default profile (270ml)',
+    @new_profile_id = @new_profile_id OUTPUT,
+    @audit_id = @audit_id OUTPUT,
+    @chain_hash = @chain_hash OUTPUT;
+
+EXEC dbo.PourProfile_Create
         @name = N'DEFAULT_360',
         @target_ml = 360,
         @tolerance_ml = 15,
-        @max_duration_s = 30,
+        @max_duration_s = 31,
         @max_flow_rate = 65,
         @actor_user_id = 2,
         @actor_role_name = N'SYSTEM',
-        @reason = N'Bootstrap default profile',
+        @reason = N'Bootstrap default profile(360ml)',
         @new_profile_id = @new_profile_id OUTPUT,
         @audit_id = @audit_id OUTPUT,
         @chain_hash = @chain_hash OUTPUT;

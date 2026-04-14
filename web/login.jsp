@@ -25,29 +25,39 @@
                     String sts = request.getParameter("status");
                     if ("invalid".equals(err)) { %> <p style="color:red; font-weight:bold;">Invalid username or password!</p> <% }
                         if ("locked".equals(err)) { %> <p style="color:#e67e22; font-weight:bold;">Account has been TEMPORARILY LOCKED!</p> <% }
-                        if ("disabled".equals(err)) { %> <p style="color:#c0392b; font-weight:bold;">Account has been DISABLED!</p> <% }
-                        if ("registered".equals(sts)) { %> <p style="color:green; font-weight:bold;">Registration successful! Please log in.</p> <% }
+                            if ("disabled".equals(err)) { %> <p style="color:#c0392b; font-weight:bold;">Account has been DISABLED!</p> <% }
+                            if ("registered".equals(sts)) { %> <p style="color:green; font-weight:bold;">Registration successful! Please log in.</p> <% }
+                %>
+
+                <%
+                    // Lấy lại dữ liệu người dùng đã submit (nếu có)
+                    String submittedUsername = request.getParameter("username") != null ? request.getParameter("username") : "";
+                    String submittedRole = request.getParameter("role") != null ? request.getParameter("role") : "";
                 %>
 
                 <form action="LoginController" method="POST">
                     <input type="hidden" name="action" value="normal_login">
+
                     <div class="form-group">
                         <label>Role</label>
                         <select name="role" class="form-control">
-                            <option value="OPERATOR">Operator</option>
-                            <option value="ADMIN">Admin</option>
-                            <option value="TECHNICIAN">Technician</option>
-                            <option value="AUDITOR">Auditor</option>
+                            <option value="OPERATOR" <%= "OPERATOR".equals(submittedRole) ? "selected" : ""%>>Operator</option>
+                            <option value="ADMIN" <%= "ADMIN".equals(submittedRole) ? "selected" : ""%>>Admin</option>
+                            <option value="TECHNICIAN" <%= "TECHNICIAN".equals(submittedRole) ? "selected" : ""%>>Technician</option>
+                            <option value="AUDITOR" <%= "AUDITOR".equals(submittedRole) ? "selected" : ""%>>Auditor</option>
                         </select>
                     </div>
+
                     <div class="form-group">
                         <label>Username</label>
-                        <input type="text" name="username" required class="form-control">
+                        <input type="text" name="username" required class="form-control" value="<%= submittedUsername%>">
                     </div>
+
                     <div class="form-group">
                         <label>Password</label>
-                        <input type="password" name="password" required class="form-control">
+                        <input type="password" name="password" required class="form-control" value="">
                     </div>
+
                     <button type="submit" class="btn btn-primary">Login</button>
                 </form>
 

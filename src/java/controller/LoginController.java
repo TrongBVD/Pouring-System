@@ -3,6 +3,7 @@ package controller;
 import dao.UserDAO;
 import model.User;
 import java.io.IOException;
+import java.net.URLEncoder; // Thêm thư viện này để mã hóa tham số URL
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
@@ -16,24 +17,35 @@ public class LoginController extends HttpServlet {
         HttpSession session = request.getSession();
         User user = null;
 
+        // Lấy lại dữ liệu người dùng đã nhập
+        String reqUsername = request.getParameter("username");
+        String reqRole = request.getParameter("role");
+
+        // Mã hóa URL để tránh lỗi nếu username chứa ký tự đặc biệt hoặc khoảng trắng
+        String safeUsername = (reqUsername != null) ? URLEncoder.encode(reqUsername, "UTF-8") : "";
+        String safeRole = (reqRole != null) ? URLEncoder.encode(reqRole, "UTF-8") : "";
+
         if ("guest_login".equals(action)) {
             user = dao.getAnonymousGuest();
         } else {
-            user = dao.authenticate(request.getParameter("username"), request.getParameter("password"), request.getParameter("role"));
+            user = dao.authenticate(reqUsername, request.getParameter("password"), reqRole);
         }
 
         if (user != null) {
-            // ĐÃ FIX: Điều hướng theo đúng trạng thái tài khoản
             if ("LOCKED".equals(user.getStatus())) {
-                response.sendRedirect("login.jsp?error=locked");
+                // Trả về lỗi kèm theo dữ liệu đã nhập
+                response.sendRedirect("login.jsp?error=locked&username=" + safeUsername + "&role=" + safeRole);
             } else if ("DISABLED".equals(user.getStatus())) {
-                response.sendRedirect("login.jsp?error=disabled");
+                // Trả về lỗi kèm theo dữ liệu đã nhập
+                response.sendRedirect("login.jsp?error=disabled&username=" + safeUsername + "&role=" + safeRole);
             } else {
                 session.setAttribute("LOGIN_USER", user);
                 response.sendRedirect("DashboardController");
             }
         } else {
-            response.sendRedirect("login.jsp?error=invalid");
+            // ĐÃ FIX: Chuyển hướng trang kèm theo cả error, username và role trên URL
+            // (Password không được truyền đi nên sẽ tự động bị bỏ trống)
+            response.sendRedirect("login.jsp?error=invalid&username=" + safeUsername + "&role=" + safeRole);
         }
     }
 }
