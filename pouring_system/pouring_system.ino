@@ -22,6 +22,7 @@ static const char* API_KEY = "ESP32_SECRET_2026";
 WebServer server(80);
 volatile bool isStopRequested = false;
 float requestedWebMl = 0.0f;  // Thêm dòng này để lưu ml từ web
+IPAddress currentSessionIP;
 
 /* --- BIẾN LƯU TRẠNG THÁI THIẾT BỊ TỪ WEB ĐẨY XUỐNG --- */
 String deviceStatus = "ACTIVE";  // ACTIVE, ERROR, OFFLINE
@@ -174,6 +175,12 @@ volatile uint32_t flowPulseCounter = 0;
 /* =========================================================
    ===================== TARGET / PUMP =====================
    ========================================================= */
+
+/* ===== Tank Empty Detection ===== */
+static const uint32_t TANK_EMPTY_TIMEOUT_MS = 3000;    // 3 giây chạy không tải sẽ báo lỗi
+static const float MIN_GAIN_FOR_ACTIVE_PUMP_G = 2.0f;  // Phải tăng ít nhất 2g trong khoảng tgian đó
+uint32_t lastPumpGainMs = 0;                           // Thời điểm cuối cùng cân nặng có tăng
+float highestWeightDuringPumpG = 0.0f;                 // Mức cân cao nhất đạt được trong phiên bơm
 
 static const float TARGET_FINAL_WEIGHT_G = 550.0f;
 static const float TARGET_MARGIN_G = 4.0f;
@@ -658,6 +665,9 @@ void pumpOn() {
     pumpLoadcellLowCount = 0;
     pumpUltraLostCount = 0;
 
+    lastPumpGainMs = millis();
+    highestWeightDuringPumpG = weightGFiltered;
+
     if (sessionCaptureActive) {
       pumpRunStartedMs = millis();
       sessionPumpRunCount++;
@@ -1099,7 +1109,7 @@ String buildBatchJson() {
 
   json += ",\"profile_id\":";
   json += String(sessionProfileId);
-  
+
   json += ",\"target_ml\":";
   json += String(targetMl, 3);
 
@@ -1121,6 +1131,10 @@ String buildBatchJson() {
 
   json += ",\"stop_reason\":\"";
   json += String(sessionStopReason);
+  json += "\"";
+
+  json += ",\"result_code\":\"";
+  json += String(result_code);
   json += "\"";
 
   json += ",\"telemetry\":[";
@@ -1172,32 +1186,44 @@ void queueSessionUpload(const char* stopReason) {
 
 void queueManualStopAfterPump() {
   sessionCupPresentForPayload = true;
+  result_code = "UNDER_POUR";
   queueSessionUpload("MANUAL_BUTTON");
 }
 
 void queueNoCupAbort() {
   sessionCupPresentForPayload = false;
+  result_code = "NO_CUP";
   queueSessionUpload("ERROR_ABORT");
 }
 
 void queueAutoSuccess() {
   sessionCupPresentForPayload = true;
+  result_code = "SUCCESS";
   queueSessionUpload("AUTO_PROFILE");
 }
 
 void queueTimeoutFail() {
   sessionCupPresentForPayload = true;
+  result_code = "TIMEOUT";
   queueSessionUpload("TIMEOUT_FAILSAFE");
 }
 
 void queueErrorAbortUnderPour() {
   sessionCupPresentForPayload = true;
+  result_code = "UNDER_POUR";
   queueSessionUpload("ERROR_ABORT");
 }
 
 void queueSystemError() {
   sessionCupPresentForPayload = true;
+  result_code = "ERROR";
   queueSessionUpload("ERROR_ABORT");
+}
+
+void queueTankEmptyAbort() {
+  sessionCupPresentForPayload = true;
+  result_code = "UNDER_POUR";        // Bắt buộc là UNDER_POUR theo Constraint SQL của bạn
+  queueSessionUpload("TANK_EMPTY");  // stop_reason = TANK_EMPTY
 }
 
 void tryUploadIfNeeded(uint32_t now) {
@@ -1531,6 +1557,10 @@ void setup() {
     } else {
       sessionProfileId = 4;  // fallback an toàn
     }
+
+    // THÊM DÒNG NÀY: Lưu lại IP của thiết bị vừa gọi lệnh rót
+    currentSessionIP = server.client().remoteIP();
+
     startSessionCapture("REMOTE_APP");
     lcdPrint2("Web ra lenh", "Cho 3 giay...");
     Serial.print("[WEB] Start pour via WiFi | user_id=");
@@ -1573,6 +1603,19 @@ void setup() {
   Serial.println("[HEALTH] Timer initialized");
 
   server.on("/stop", HTTP_POST, []() {
+    // Nếu hệ thống đang không rót thì báo lỗi
+    if (state == ST_IDLE || state == ST_DONE) {
+      server.send(400, "text/plain", "NOT_POURING");
+      return;
+    }
+
+    // THÊM LOGIC KIỂM TRA IP: Nếu IP gọi /stop KHÁC với IP đã gọi /pour
+    if (server.client().remoteIP() != currentSessionIP) {
+      Serial.println("[SECURITY] Tu choi lenh STOP vi khac IP ra lenh ban dau!");
+      server.send(403, "text/plain", "FORBIDDEN: You did not start this session");
+      return;
+    }
+
     isStopRequested = true;
     server.send(200, "text/plain", "STOP_ACKNOWLEDGE");
   });
@@ -2019,6 +2062,32 @@ void loop() {
           break;
         }
 
+        // === BẮT ĐẦU: LOGIC KIỂM TRA BÌNH CẠN NƯỚC (TANK EMPTY) ===
+        if (weightGFiltered > highestWeightDuringPumpG) {
+          float gain = weightGFiltered - highestWeightDuringPumpG;
+          if (gain >= MIN_GAIN_FOR_ACTIVE_PUMP_G) {
+            highestWeightDuringPumpG = weightGFiltered;
+            lastPumpGainMs = now;  // Cập nhật mốc thời gian có nước chảy vào
+          }
+        }
+
+        // Bỏ qua 1.5 giây đầu tiên (nước đang mồi trong ống)
+        if ((now - pumpStateChangedMs) > 1500) {
+          // Nếu quá 3 giây mà cân không tăng thêm
+          if ((now - lastPumpGainMs) >= TANK_EMPTY_TIMEOUT_MS) {
+            pouring = false;
+            pumpOff();
+            Serial.println("[SAFETY STOP] Tank Empty Detected! Pump ran for 3s without weight gain.");
+
+            tankEmptyDetected = true;  // Bật cờ lỗi hết nước
+
+            lcdPrint2("Binh het nuoc!", "Da dung may bom");
+            goState(ST_SETTLING);
+            break;
+          }
+        }
+        // === KẾT THÚC: LOGIC KIỂM TRA BÌNH CẠN NƯỚC ===
+
         if (reachedTargetByRealtimeWeight(now)) {
           pouring = false;
           pumpOff();
@@ -2096,6 +2165,15 @@ void loop() {
             forcedStopByCupRemoval = false;
             break;
           }
+
+          // === BẮT ĐẦU: XỬ LÝ LỖI HẾT NƯỚC ===
+          if (tankEmptyDetected) {
+            queueTankEmptyAbort();  // Gọi hàm queueTankEmptyAbort() đã thêm ở bước trước
+            finishToDone(now, "Loi he thong", "Binh het nuoc");
+            tankEmptyDetected = false;  // Reset cờ để dùng cho phiên tiếp theo
+            break;
+          }
+          // === KẾT THÚC: XỬ LÝ LỖI HẾT NƯỚC ===
 
           if (userStopRequested) {
             queueManualStopAfterPump();
