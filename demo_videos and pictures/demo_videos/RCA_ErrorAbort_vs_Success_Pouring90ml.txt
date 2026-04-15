@@ -1,0 +1,7 @@
+In the Pouring_90ml demonstration, an inconsistency occurs where the stop_reason is logged as ERROR_ABORT, yet the result_code is recorded as SUCCESS. This anomaly is caused by a two-part logical flaw between the IoT firmware and the Java Backend:
+
+Top-up Failure (ESP32): The system attempts to compensate for an under-pour by initiating short top-up pump cycles. When these cycles exceed the maximum limit (MAX_TOPUP_CYCLES) or fail to deliver the minimum required volume (MIN_GAIN_PER_TOPUP_G), the ESP32 correctly aborts the session, setting the internal state to ERROR_ABORT.
+
+JSON Serialization & Backend Override: In the original firmware, the ESP32 failed to append the evaluated result_code (which should be UNDER_POUR or ERROR) into the outgoing JSON payload. Upon receiving this incomplete payload, the Java Backend (PourAPI.java) executed a flawed fallback logic that aggressively hardcoded any missing result_code as SUCCESS, regardless of the ERROR_ABORT flag.
+
+Resolution: The firmware's JSON builder was patched to explicitly include the calculated result_code, and the Backend's hardcoded override was removed to ensure accurate, data-driven logging
