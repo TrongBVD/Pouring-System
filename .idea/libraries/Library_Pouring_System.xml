@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Library Pouring System">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/Library Pouring System/jbcrypt-0.4.jar!/" />
+      <root url="jar://$PROJECT_DIR$/Library Pouring System/weka.jar!/" />
+      <root url="jar://$PROJECT_DIR$/Library Pouring System/sqljdbc4.jar!/" />
+      <root url="jar://$PROJECT_DIR$/Library Pouring System/gson-2.13.2.jar!/" />
+      <root url="jar://$PROJECT_DIR$/Library Pouring System/jstl-1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
