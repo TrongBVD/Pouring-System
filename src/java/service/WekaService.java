@@ -1,7 +1,6 @@
 package service;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import dao.MlFeatureRow;
 import model.PourSession;
 import weka.classifiers.Classifier;
 import weka.core.Attribute;
@@ -17,10 +16,8 @@ import java.util.Map;
 
 public class WekaService {
 
-    // Champion model chính
     private static final String CHAMPION_MODEL = "Logistics.model";
 
-    // Shadow models
     private static final String[] MODEL_FILES = new String[]{
         "Logistics.model",
         "NaivesBayes.model",
@@ -29,11 +26,10 @@ public class WekaService {
     };
 
     /**
-     * Schema đúng theo dataset train: 1) target_ml 2) actual_ml 3) duration_s
-     * 4) peak_flow 5) avg_flow 6) class = {0,1}
+     * Định nghĩa cấu trúc dữ liệu Instances tương thích chính xác với View
+     * PourSession_ML_Features
      */
     private Instances dataStructure;
-
     private final Map<String, Classifier> loadedModels = new LinkedHashMap<>();
     private boolean championLoaded = false;
 
@@ -45,19 +41,43 @@ public class WekaService {
     private void buildDataStructure() {
         ArrayList<Attribute> attributes = new ArrayList<>();
 
-        attributes.add(new Attribute("target_ml"));
+        // Thuộc tính số học liên tục (Numeric) từ View
         attributes.add(new Attribute("actual_ml"));
         attributes.add(new Attribute("duration_s"));
-        attributes.add(new Attribute("peak_flow"));
+        attributes.add(new Attribute("target_ml"));
         attributes.add(new Attribute("avg_flow"));
+        attributes.add(new Attribute("avg_flow_sample"));
+        attributes.add(new Attribute("peak_flow_sample"));
+        attributes.add(new Attribute("min_flow_sample"));
+        attributes.add(new Attribute("std_flow_sample"));
+        attributes.add(new Attribute("flow_sample_count"));
 
+        // Thuộc tính phân loại dạng chuỗi (Nominal)
+        ArrayList<String> startReasons = new ArrayList<>();
+        startReasons.add("MANUAL_BUTTON");
+        startReasons.add("REMOTE_APP");
+        attributes.add(new Attribute("start_reason", startReasons));
+
+        ArrayList<String> stopReasons = new ArrayList<>();
+        stopReasons.add("AUTO_PROFILE");
+        stopReasons.add("MANUAL_BUTTON");
+        stopReasons.add("REMOTE_APP");
+        stopReasons.add("TANK_EMPTY");
+        stopReasons.add("ERROR_ABORT");
+        stopReasons.add("TIMEOUT_FAILSAFE");
+        attributes.add(new Attribute("stop_reason", stopReasons));
+
+        // Nhãn phân lớp mục tiêu dựa theo trường result_code của hệ thống
         ArrayList<String> classValues = new ArrayList<>();
-        classValues.add("0"); // NORMAL
-        classValues.add("1"); // ANOMALY
+        classValues.add("SUCCESS");
+        classValues.add("UNDER_POUR");
+        classValues.add("OVER_POUR");
+        classValues.add("TIMEOUT");
+        classValues.add("NO_CUP");
+        classValues.add("ERROR");
+        attributes.add(new Attribute("result_code", classValues));
 
-        attributes.add(new Attribute("class", classValues));
-
-        dataStructure = new Instances("PourSessionRisk", attributes, 0);
+        dataStructure = new Instances("PourSessionMLFeaturesRelation", attributes, 0);
         dataStructure.setClassIndex(attributes.size() - 1);
     }
 
@@ -86,16 +106,12 @@ public class WekaService {
         if (!championLoaded) {
             System.err.println("WEKA: Champion model not loaded. Service will run in Simulation Mode.");
         }
-
-        System.out.println("WEKA webInfPath = " + webInfPath);
     }
 
     private String resolveModelPath(String webInfPath, String fileName) {
         if (webInfPath == null || webInfPath.trim().isEmpty()) {
             return null;
         }
-
-        // Workaround nếu caller lỡ truyền ...\WEB-INF\model.model
         if (webInfPath.endsWith(".model")) {
             webInfPath = webInfPath.substring(0, webInfPath.length() - 6);
         }
@@ -114,237 +130,106 @@ public class WekaService {
         if (underModel.exists() && underModel.isFile()) {
             return underModel.getAbsolutePath();
         }
-
-        System.out.println("WEKA checking: " + direct.getAbsolutePath());
-        System.out.println("WEKA checking: " + underModels.getAbsolutePath());
-        System.out.println("WEKA checking: " + underModel.getAbsolutePath());
-
         return null;
     }
 
-    public double analyzeSessionRisk(PourSession session) {
-        MlScoringResult result = scoreSession(session);
-        if (result == null) {
-            return 0.0;
-        }
-        return result.getChampionScore();
-    }
-
-    public String analyzeReasonJson(PourSession session) {
-        MlScoringResult result = scoreSession(session);
-        if (result == null) {
-            return null;
-        }
-        return result.getReasonJson();
-    }
-
-    public MlScoringResult scoreSession(PourSession session) {
-        Map<String, Double> shadowScores = new LinkedHashMap<>();
-
-        if (session == null) {
-            return new MlScoringResult(
-                    0.0,
-                    "INVALID_SESSION",
-                    "[]",
-                    shadowScores,
-                    true
-            );
-        }
-
+    /**
+     * Hàm chấm điểm rủi ro chính sử dụng DTO trích xuất từ View ML mới
+     */
+    public double analyzeFeaturesRisk(MlFeatureRow features) {
         if (!championLoaded || !loadedModels.containsKey(CHAMPION_MODEL)) {
-            double simulated = simulateRisk(session);
-            String reasonJson = buildReasonJson(session, simulated);
-
-            return new MlScoringResult(
-                    simulated,
-                    "SIMULATION",
-                    reasonJson,
-                    shadowScores,
-                    true
-            );
+            return simulateRiskFromFeatures(features);
         }
 
         try {
-            double championScore = scoreWithModel(loadedModels.get(CHAMPION_MODEL), session);
+            Instance instance = new DenseInstance(dataStructure.numAttributes());
+            instance.setDataset(dataStructure);
 
-            for (Map.Entry<String, Classifier> entry : loadedModels.entrySet()) {
-                String modelName = entry.getKey();
-                if (CHAMPION_MODEL.equalsIgnoreCase(modelName)) {
-                    continue;
-                }
+            // Mapping 9 trường dữ liệu liên tục
+            instance.setValue(0, safe(features.getActualMl()));
+            instance.setValue(1, safe(features.getDurationS()));
+            instance.setValue(2, safe(features.getTargetMl()));
+            instance.setValue(3, safe(features.getAvgFlow()));
+            instance.setValue(4, safe(features.getAvgFlowSample()));
+            instance.setValue(5, safe(features.getPeakFlowSample()));
+            instance.setValue(6, safe(features.getMinFlowSample()));
+            instance.setValue(7, safe(features.getStdFlowSample()));
+            instance.setValue(8, safe(features.getFlowSampleCount()));
 
-                try {
-                    double score = scoreWithModel(entry.getValue(), session);
-                    shadowScores.put(modelName, score);
-                } catch (Exception shadowEx) {
-                    System.err.println("WEKA: Shadow scoring failed for " + modelName + " -> " + shadowEx.getMessage());
-                }
+            // Mapping các trường nominal dạng chuỗi an toàn
+            Attribute startReasonAttr = dataStructure.attribute("start_reason");
+            if (features.getStartReason() != null && startReasonAttr.indexOfValue(features.getStartReason().trim().toUpperCase()) != -1) {
+                instance.setValue(startReasonAttr, features.getStartReason().trim().toUpperCase());
+            } else {
+                instance.setMissing(startReasonAttr);
             }
 
-            String reasonJson = buildReasonJson(session, championScore);
+            Attribute stopReasonAttr = dataStructure.attribute("stop_reason");
+            if (features.getStopReason() != null && stopReasonAttr.indexOfValue(features.getStopReason().trim().toUpperCase()) != -1) {
+                instance.setValue(stopReasonAttr, features.getStopReason().trim().toUpperCase());
+            } else {
+                instance.setMissing(stopReasonAttr);
+            }
 
-            return new MlScoringResult(
-                    championScore,
-                    CHAMPION_MODEL,
-                    reasonJson,
-                    shadowScores,
-                    false
-            );
+            instance.setMissing(dataStructure.classIndex());
 
+            // Dự đoán phân phối xác suất lỗi
+            double[] probabilities = loadedModels.get(CHAMPION_MODEL).distributionForInstance(instance);
+            if (probabilities == null || probabilities.length == 0) {
+                return 0.0;
+            }
+
+            // Tính tổng xác suất của các phân lớp bất thường (Bỏ qua index 0 - SUCCESS)
+            double anomalyRisk = 0.0;
+            for (int i = 1; i < probabilities.length; i++) {
+                anomalyRisk += probabilities[i];
+            }
+
+            return clamp01(anomalyRisk);
         } catch (Exception e) {
             e.printStackTrace();
-
-            double simulated = simulateRisk(session);
-            String reasonJson = buildReasonJson(session, simulated);
-
-            return new MlScoringResult(
-                    simulated,
-                    "SIMULATION_AFTER_ERROR",
-                    reasonJson,
-                    shadowScores,
-                    true
-            );
+            return simulateRiskFromFeatures(features);
         }
     }
 
-    private double scoreWithModel(Classifier model, PourSession session) throws Exception {
-        Instance instance = new DenseInstance(dataStructure.numAttributes());
-        instance.setDataset(dataStructure);
-
-        instance.setValue(0, safe(session.getTargetMl()));
-        instance.setValue(1, safe(session.getActualMl()));
-        instance.setValue(2, safe(session.getDuration()));
-        instance.setValue(3, safe(session.getPeakFlow()));
-        instance.setValue(4, safe(session.getAvgFlow()));
-
-        instance.setMissing(dataStructure.classIndex());
-
-        double[] probabilities = model.distributionForInstance(instance);
-
-        int positiveIndex = getPositiveClassIndex();
-
-        if (probabilities == null || positiveIndex < 0 || positiveIndex >= probabilities.length) {
+    private double simulateRiskFromFeatures(MlFeatureRow f) {
+        if (f == null) {
             return 0.0;
         }
-
-        System.out.println("WEKA input:"
-                + " target_ml=" + safe(session.getTargetMl())
-                + ", actual_ml=" + safe(session.getActualMl())
-                + ", duration_s=" + safe(session.getDuration())
-                + ", peak_flow=" + safe(session.getPeakFlow())
-                + ", avg_flow=" + safe(session.getAvgFlow()));
-
-        System.out.println("WEKA probabilities = " + java.util.Arrays.toString(probabilities));
-        System.out.println("WEKA positiveIndex = " + positiveIndex);
-
-        return clamp01(probabilities[positiveIndex]);
-    }
-
-    /**
-     * Class của bạn là 0/1, trong đó: 0 = bình thường 1 = bất thường
-     */
-    private int getPositiveClassIndex() {
-        Attribute cls = dataStructure.classAttribute();
-
-        for (int i = 0; i < cls.numValues(); i++) {
-            if ("1".equals(cls.value(i))) {
-                return i;
-            }
-        }
-
-        // fallback: class cuối
-        return Math.max(0, cls.numValues() - 1);
-    }
-
-    /**
-     * Fallback khi model lỗi hoặc chưa load được.
-     */
-    private double simulateRisk(PourSession session) {
-        double target = safe(session.getTargetMl());
-        double actual = safe(session.getActualMl());
-        double duration = safe(session.getDuration());
-        double peakFlow = safe(session.getPeakFlow());
-        double avgFlow = safe(session.getAvgFlow());
-
-        if (target > 0 && actual > target * 1.15) {
+        if (f.getTargetMl() > 0 && f.getActualMl() > f.getTargetMl() * 1.15) {
             return 0.90;
         }
-
-        if (duration > 25.0 && actual < 0.80 * Math.max(target, 1.0)) {
+        if (f.getDurationS() > 25.0 && f.getActualMl() < 0.80 * f.getTargetMl()) {
             return 0.85;
         }
-
-        if (peakFlow > 65.0) {
+        if (f.getPeakFlowSample() > 65.0) {
             return 0.80;
         }
-
-        if (avgFlow > 25.0) {
-            return 0.75;
-        }
-
-        return 0.15;
-    }
-
-    /**
-     * reason_json heuristic để app/DB log giải thích.
-     */
-    private String buildReasonJson(PourSession session, double riskScore) {
-        JsonArray arr = new JsonArray();
-
-        addReason(arr, "WEKA_CHAMPION_SCORE", clamp01(riskScore), 1);
-
-        double target = safe(session.getTargetMl());
-        double actual = safe(session.getActualMl());
-        double duration = safe(session.getDuration());
-        double peakFlow = safe(session.getPeakFlow());
-        double avgFlow = safe(session.getAvgFlow());
-
-        double overTargetSignal = 0.0;
-        if (target > 0.0) {
-            overTargetSignal = clamp01(actual / target);
-        }
-
-        double durationSignal = clamp01(duration / 25.0);
-        double peakFlowSignal = clamp01(peakFlow / 65.0);
-        double avgFlowSignal = clamp01(avgFlow / 25.0);
-
-        addReason(arr, "OVER_TARGET_SIGNAL", overTargetSignal, 2);
-        addReason(arr, "PEAK_FLOW_SIGNAL", peakFlowSignal, 3);
-        addReason(arr, "AVG_FLOW_SIGNAL", avgFlowSignal, 4);
-        addReason(arr, "DURATION_SIGNAL", durationSignal, 5);
-
-        return arr.toString();
-    }
-
-    private void addReason(JsonArray arr, String featureName, double contribution, int rank) {
-        JsonObject obj = new JsonObject();
-        obj.addProperty("feature_name", featureName);
-        obj.addProperty("contribution", round4(clamp01(contribution)));
-        obj.addProperty("importance_rank", rank);
-        arr.add(obj);
+        return f.getResultCode() != null && !"SUCCESS".equalsIgnoreCase(f.getResultCode()) ? 0.70 : 0.15;
     }
 
     private double safe(double v) {
-        if (Double.isNaN(v) || Double.isInfinite(v)) {
-            return 0.0;
-        }
-        return v;
+        return (Double.isNaN(v) || Double.isInfinite(v)) ? 0.0 : v;
     }
 
     private double clamp01(double v) {
-        if (Double.isNaN(v) || Double.isInfinite(v)) {
+        if (Double.isNaN(v) || Double.isInfinite(v) || v < 0.0) {
             return 0.0;
         }
-        if (v < 0.0) {
-            return 0.0;
-        }
-        if (v > 1.0) {
-            return 1.0;
-        }
-        return v;
+        return Math.min(v, 1.0);
     }
 
-    private double round4(double v) {
-        return Math.round(v * 10000.0) / 10000.0;
+    // Giữ lại các hàm cũ tương thích ngược nếu các Controller khác vẫn gọi
+    public double analyzeSessionRisk(PourSession session) {
+        if (session == null) {
+            return 0.0;
+        }
+        MlFeatureRow mock = new MlFeatureRow();
+        mock.setTargetMl(session.getTargetMl());
+        mock.setActualMl(session.getActualMl());
+        mock.setDurationS(session.getDuration());
+        mock.setAvgFlow(session.getAvgFlow());
+        mock.setPeakFlowSample(session.getPeakFlow());
+        return analyzeFeaturesRisk(mock);
     }
 }

@@ -6,7 +6,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import dao.LogDAO;
-import model.PourSession;
+import dao.PourSessionDAO;
+import dao.MlFeatureRow;
 import model.User;
 import service.WekaService;
 import java.io.BufferedReader;
@@ -30,7 +31,6 @@ import javax.servlet.http.HttpServletResponse;
 public class PourAPI extends HttpServlet {
 
     private static final Logger LOGGER = Logger.getLogger(PourAPI.class.getName());
-
     private static final String DEFAULT_MODEL_PATH = "/WEB-INF";
     private static final double ML_REASON_THRESHOLD = 0.80;
 
@@ -73,13 +73,8 @@ public class PourAPI extends HttpServlet {
         return fallback;
     }
 
-    /**
-     * Rule mới bạn chốt: - Nếu cup_present = false => stop_reason = NO_CUP =>
-     * result_code = SUCCESS
-     */
     private void applyCupMissingOverride(JsonObject jsonObject) {
         boolean cupPresent = getBoolean(jsonObject, "cup_present", true);
-
         String startReason = normUpper(getString(jsonObject, "start_reason", "REMOTE_APP"), "REMOTE_APP");
         String stopReason = normUpper(getString(jsonObject, "stop_reason", "AUTO_PROFILE"), "AUTO_PROFILE");
         String resultCode = normUpper(getString(jsonObject, "result_code", "SUCCESS"), "SUCCESS");
@@ -88,9 +83,6 @@ public class PourAPI extends HttpServlet {
         jsonObject.addProperty("stop_reason", stopReason);
         jsonObject.addProperty("result_code", resultCode);
 
-        // Đồng bộ với SQL mới:
-        // - stop_reason KHÔNG có NO_CUP
-        // - result_code mới có NO_CUP
         if (!cupPresent) {
             jsonObject.addProperty("stop_reason", "ERROR_ABORT");
             jsonObject.addProperty("result_code", "NO_CUP");
@@ -98,91 +90,45 @@ public class PourAPI extends HttpServlet {
     }
 
     /**
-     * Rule Weka mới bạn chốt: - Chỉ stop_reason = MANUAL_BUTTON mới KHÔNG đưa
-     * vào Weka - Các case khác vẫn được phép chấm Weka
+     * Logic Weka được cải tiến để nạp dữ liệu thống kê tổng hợp từ tầng
+     * Database View sau khi lưu
      */
-    private void applyWekaLogic(JsonObject jsonObject, HttpServletRequest request) {
+    private void executeWekaWithDatabaseView(int sessionId, JsonObject jsonObject) throws SQLException, ClassNotFoundException {
         String finalStopReason = normUpper(getString(jsonObject, "stop_reason", "AUTO_PROFILE"), "AUTO_PROFILE");
         String finalResultCode = normUpper(getString(jsonObject, "result_code", "SUCCESS"), "SUCCESS");
 
-        boolean mlEligible
-                = !"MANUAL_BUTTON".equals(finalStopReason)
-                && !"NO_CUP".equals(finalResultCode);
-
+        boolean mlEligible = !"MANUAL_BUTTON".equals(finalStopReason) && !"NO_CUP".equals(finalResultCode);
         jsonObject.addProperty("ml_eligible", mlEligible);
 
         if (!mlEligible) {
-            if ("MANUAL_BUTTON".equals(finalStopReason)) {
-                jsonObject.addProperty("ml_exclusion_reason", "MANUAL_BUTTON");
-            } else if ("NO_CUP".equals(finalResultCode)) {
-                jsonObject.addProperty("ml_exclusion_reason", "NO_CUP");
-            } else {
-                jsonObject.addProperty("ml_exclusion_reason", "RULE_EXCLUDED");
-            }
-
-            jsonObject.remove("ml_risk_score");
-            jsonObject.remove("ml_reason_json");
+            jsonObject.addProperty("ml_exclusion_reason", "MANUAL_BUTTON".equals(finalStopReason) ? "MANUAL_BUTTON" : "NO_CUP");
             return;
         }
 
-        jsonObject.remove("ml_exclusion_reason");
+        PourSessionDAO sessionDAO = new PourSessionDAO();
+        MlFeatureRow dbFeatures = sessionDAO.getMlFeaturesBySessionId(sessionId);
 
-        WekaService weka = new WekaService(
-                getServletContext().getRealPath(DEFAULT_MODEL_PATH)
-        );
+        if (dbFeatures != null) {
+            WekaService weka = new WekaService(getServletContext().getRealPath(DEFAULT_MODEL_PATH));
+            double riskScore = weka.analyzeFeaturesRisk(dbFeatures);
 
-        double targetMl = getDouble(jsonObject, "target_ml", 0.0);
-        double actualMl = getDouble(jsonObject, "actual_ml", 0.0);
-        double durationS = getDouble(jsonObject, "duration_s", 0.0);
-
-        double peakFlow = computePeakFlowFromTelemetry(jsonObject);
-        double avgFlow = (durationS > 0.0) ? (actualMl / durationS) : 0.0;
-
-        PourSession tempSession = new PourSession();
-        tempSession.setTargetMl(targetMl);
-        tempSession.setActualMl(actualMl);
-        tempSession.setDuration(durationS);
-        tempSession.setPeakFlow(peakFlow);
-        tempSession.setAvgFlow(avgFlow);
-
-        System.out.println("WEKA session features:"
-                + " target_ml=" + targetMl
-                + ", actual_ml=" + actualMl
-                + ", duration_s=" + durationS
-                + ", peak_flow=" + peakFlow
-                + ", avg_flow=" + avgFlow);
-
-        double riskScore = weka.analyzeSessionRisk(tempSession);
-
-        if (riskScore >= 0.0) {
-            jsonObject.addProperty("ml_risk_score", riskScore);
-
-            if (riskScore > ML_REASON_THRESHOLD) {
-                jsonObject.addProperty(
-                        "ml_reason_json",
-                        "[{\"feature_name\":\"Weka_Risk\",\"contribution\":1.0,\"importance_rank\":1}]"
-                );
-            } else {
-                jsonObject.remove("ml_reason_json");
+            if (riskScore >= 0.0) {
+                jsonObject.addProperty("ml_risk_score", riskScore);
+                if (riskScore > ML_REASON_THRESHOLD) {
+                    jsonObject.addProperty("ml_reason_json",
+                            "[{\"feature_name\":\"Weka_Advanced_Risk\",\"contribution\":" + riskScore + ",\"importance_rank\":1}]"
+                    );
+                }
             }
-        } else {
-            jsonObject.remove("ml_risk_score");
-            jsonObject.remove("ml_reason_json");
         }
     }
 
-    /**
-     * Giữ nguyên hướng xử lý telemetry FLOW hiện tại của bạn: - group theo
-     * t_offset_ms - median window = 3 - EMA alpha = 0.25 - reference_value lấy
-     * từ delta loadcell
-     */
     private String processTelemetry(JsonObject jsonObject) {
         if (!jsonObject.has("telemetry") || !jsonObject.get("telemetry").isJsonArray()) {
             return "[]";
         }
 
         JsonArray telemetry = jsonObject.getAsJsonArray("telemetry");
-
         Map<Long, JsonObject> flowByTime = new LinkedHashMap<>();
         Map<Long, JsonObject> loadcellByTime = new LinkedHashMap<>();
 
@@ -190,9 +136,7 @@ public class PourAPI extends HttpServlet {
             if (el == null || !el.isJsonObject()) {
                 continue;
             }
-
             JsonObject obj = el.getAsJsonObject();
-
             if (!obj.has("t_offset_ms") || !obj.has("sensor_type_id")) {
                 continue;
             }
@@ -200,9 +144,9 @@ public class PourAPI extends HttpServlet {
             long t = obj.get("t_offset_ms").getAsLong();
             int sensorType = obj.get("sensor_type_id").getAsInt();
 
-            if (sensorType == 2) { // FLOW
+            if (sensorType == 2) {
                 flowByTime.put(t, obj);
-            } else if (sensorType == 3) { // LOADCELL
+            } else if (sensorType == 3) {
                 loadcellByTime.put(t, obj);
             }
         }
@@ -218,13 +162,11 @@ public class PourAPI extends HttpServlet {
         for (Long t : times) {
             JsonObject flowObj = flowByTime.get(t);
             JsonObject lcObj = loadcellByTime.get(t);
-
             if (flowObj == null || !flowObj.has("value")) {
                 continue;
             }
 
             double rawFlow = flowObj.get("value").getAsDouble();
-
             Double refValue = null;
             if (lcObj != null && lcObj.has("value")) {
                 double currentWeight = lcObj.get("value").getAsDouble();
@@ -242,37 +184,25 @@ public class PourAPI extends HttpServlet {
             List<Double> sortedWindow = new ArrayList<>(flowWindow);
             Collections.sort(sortedWindow);
 
-            double medianFlow;
-            if (sortedWindow.size() == 2) {
-                medianFlow = (sortedWindow.get(0) + sortedWindow.get(1)) / 2.0;
-            } else {
-                medianFlow = sortedWindow.get(sortedWindow.size() / 2);
-            }
+            double medianFlow = sortedWindow.size() == 2
+                    ? (sortedWindow.get(0) + sortedWindow.get(1)) / 2.0 : sortedWindow.get(sortedWindow.size() / 2);
 
-            double filteredFlow;
-            if (isFirstFlow) {
-                filteredFlow = rawFlow;
-                isFirstFlow = false;
-            } else {
-                filteredFlow = 0.25 * medianFlow + 0.75 * lastEma;
-            }
+            double filteredFlow = isFirstFlow ? rawFlow : (0.25 * medianFlow + 0.75 * lastEma);
+            isFirstFlow = false;
             lastEma = filteredFlow;
 
             flowObj.addProperty("filtered_value", filteredFlow);
-
             if (refValue != null) {
                 flowObj.addProperty("reference_type", "LOADCELL_DELTA");
                 flowObj.addProperty("reference_value", refValue);
             }
         }
-
         return telemetry.toString();
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
@@ -290,23 +220,14 @@ public class PourAPI extends HttpServlet {
                 return;
             }
 
-            // upload_id fallback
-            if (!jsonObject.has("upload_id")
-                    || jsonObject.get("upload_id").isJsonNull()
+            if (!jsonObject.has("upload_id") || jsonObject.get("upload_id").isJsonNull()
                     || jsonObject.get("upload_id").getAsString().trim().isEmpty()) {
                 jsonObject.addProperty("upload_id", "UP_" + UUID.randomUUID().toString().substring(0, 8));
             }
 
-            // xử lý telemetry trước
             String telemetryJsonString = processTelemetry(jsonObject);
-
-            // rule cup missing trước
             applyCupMissingOverride(jsonObject);
 
-            // rule Weka sau khi đã normalize stop_reason/result_code
-            applyWekaLogic(jsonObject, request);
-
-            // actor hệ thống cho API ingest
             User actor = new User();
             actor.setUserId(2);
             actor.setRole("SYSTEM");
@@ -315,65 +236,22 @@ public class PourAPI extends HttpServlet {
             int newSessionId = logDAO.saveSessionBatch(jsonObject, telemetryJsonString, actor);
 
             if (newSessionId > 0) {
+                // Thực thi nạp dữ liệu thống kê và chấm điểm Weka từ cấu trúc View mới
+                executeWekaWithDatabaseView(newSessionId, jsonObject);
+
                 response.setStatus(200);
-                response.getWriter().print(
-                        "{\"status\":\"success\", \"session_id\":" + newSessionId + "}"
-                );
+                response.getWriter().print("{\"status\":\"success\", \"session_id\":" + newSessionId + "}");
             } else {
                 response.setStatus(500);
-                response.getWriter().print(
-                        "{\"status\":\"error\", \"message\":\"Database SP failed\"}"
-                );
+                response.getWriter().print("{\"status\":\"error\", \"message\":\"Database SP failed\"}");
             }
-
         } catch (JsonSyntaxException e) {
-            e.printStackTrace();
             response.setStatus(400);
-            response.getWriter().print(
-                    "{\"status\":\"error\", \"message\":\"Invalid JSON\"}"
-            );
+            response.getWriter().print("{\"status\":\"error\", \"message\":\"Invalid JSON\"}");
         } catch (SQLException | ClassNotFoundException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
             response.setStatus(500);
-            response.getWriter().print(
-                    "{\"status\":\"error\", \"message\":\"System Error\"}"
-            );
+            response.getWriter().print("{\"status\":\"error\", \"message\":\"System Error\"}");
         }
-    }
-
-    private double computePeakFlowFromTelemetry(JsonObject jsonObject) {
-        if (jsonObject == null || !jsonObject.has("telemetry") || !jsonObject.get("telemetry").isJsonArray()) {
-            return 0.0;
-        }
-
-        JsonArray telemetry = jsonObject.getAsJsonArray("telemetry");
-        double peak = 0.0;
-
-        for (JsonElement el : telemetry) {
-            if (el == null || !el.isJsonObject()) {
-                continue;
-            }
-
-            JsonObject obj = el.getAsJsonObject();
-            int sensorTypeId = (int) getDouble(obj, "sensor_type_id", -1);
-            if (sensorTypeId != 2) { // FLOW
-                continue;
-            }
-
-            double value = getDouble(obj, "filtered_value", Double.NaN);
-            if (Double.isNaN(value)) {
-                value = getDouble(obj, "value", 0.0);
-            }
-
-            if (value > peak) {
-                peak = value;
-            }
-        }
-
-        return peak;
-    }
-
-    private double computeAvgFlowFromTelemetry(JsonObject jsonObject, double actualMl, double durationS) {
-        return (durationS > 0.0) ? (actualMl / durationS) : 0.0;
     }
 }
