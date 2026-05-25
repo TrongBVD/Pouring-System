@@ -4,11 +4,16 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import model.Device;
 import model.User;
 import utils.DBContext;
 
 public class DeviceDAO {
+
+    private static final Logger LOGGER = Logger.getLogger(DeviceDAO.class.getName());
 
     public String getDeviceStatus(int deviceId) {
         String sql = "SELECT status FROM Device WHERE device_id = ?";
@@ -52,24 +57,24 @@ public class DeviceDAO {
     }
 
     public Device getDeviceInfo() {
-        Device device = new Device();
-        String sql = "SELECT TOP 1 d.device_id, d.location, d.firmware_ver, d.status, p.target_ml "
-                + "FROM Device d CROSS JOIN (SELECT TOP 1 target_ml FROM PourProfile) p "
-                + "WHERE d.device_id = 1";
+        // Ánh xạ chính xác các cột tương ứng với các biến trong class Device
+        String sql = "SELECT device_id, location, firmware_ver, status FROM Device WHERE device_id = 1";
 
-        try ( Connection conn = DBContext.getConnection();  PreparedStatement ps = conn.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
+        try ( Connection conn = DBContext.getConnection();  PreparedStatement ps = conn.prepareStatement(sql);  ResultSet rs = ps.executeQuery()) {
+
             if (rs.next()) {
-                device.setDeviceId(rs.getInt("device_id"));
-                device.setLocation(rs.getString("location"));
-                device.setFirmwareVer(rs.getString("firmware_ver"));
-                device.setStatus(rs.getString("status"));
-                device.setTargetMl(rs.getInt("target_ml"));
+                Device d = new Device();
+                d.setDeviceId(rs.getInt("device_id"));
+                d.setLocation(rs.getString("location"));
+                d.setFirmwareVer(rs.getString("firmware_ver"));
+                d.setStatus(rs.getString("status"));
+                return d;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Lỗi truy vấn thông tin thiết bị", e);
         }
-        return device;
+
+        return null;
     }
 
     // =========================================================================

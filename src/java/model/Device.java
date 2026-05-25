@@ -6,7 +6,6 @@ public class Device {
     private String location;
     private String firmwareVer;
     private String status;
-    private int targetMl;
 
     public int getDeviceId() {
         return deviceId;
@@ -38,13 +37,5 @@ public class Device {
 
     public void setStatus(String status) {
         this.status = status;
-    }
-
-    public int getTargetMl() {
-        return targetMl;
-    }
-
-    public void setTargetMl(int targetMl) {
-        this.targetMl = targetMl;
     }
 }

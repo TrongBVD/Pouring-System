@@ -1,37 +1,63 @@
 package utils;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBContext {
 
-    // 1. Cấu hình Database chính (Máy trong mạng)
-    // THÊM loginTimeout=3 để máy tự động bỏ cuộc sau 3s nếu mất mạng, không bị treo Web
-    private static final String PRIMARY_DB_URL = "jdbc:sqlserver://192.168.4.2:1433;databaseName=SmartWaterAuditDB;encrypt=true;trustServerCertificate=true;loginTimeout=3;";
+    private static HikariDataSource primaryDataSource;
+    private static HikariDataSource localDataSource;
+
+    // Các hằng số cấu hình giữ nguyên như cũ
+    private static final String PRIMARY_DB_URL = "jdbc:sqlserver://192.168.4.2:1433;databaseName=SmartWaterAuditDB;encrypt=true;trustServerCertificate=true;";
     private static final String PRIMARY_USER = "sa";
     private static final String PRIMARY_PASS = "12345";
 
-    // 2. Cấu hình Database dự phòng (Máy Local / localhost)
-    private static final String LOCAL_DB_URL = "jdbc:sqlserver://localhost:1433;databaseName=SmartWaterAuditDB;encrypt=true;trustServerCertificate=true;loginTimeout=3;";
-    private static final String LOCAL_USER = "sa";     // Đổi lại user máy local của bạn nếu khác
-    private static final String LOCAL_PASS = "12345";  // Đổi lại pass máy local của bạn nếu khác
+    private static final String LOCAL_DB_URL = "jdbc:sqlserver://localhost:1433;databaseName=SmartWaterAuditDB;encrypt=true;trustServerCertificate=true;";
+    private static final String LOCAL_USER = "sa";
+    private static final String LOCAL_PASS = "12345";
 
-    public static Connection getConnection() throws SQLException, ClassNotFoundException {
-        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+    static {
+        // Khởi tạo Pool tĩnh cho DB Chính
+        HikariConfig primaryConfig = new HikariConfig();
+        primaryConfig.setJdbcUrl(PRIMARY_DB_URL);
+        primaryConfig.setUsername(PRIMARY_USER);
+        primaryConfig.setPassword(PRIMARY_PASS);
+        primaryConfig.setMaximumPoolSize(10); // Giữ sẵn 10 kết nối trên RAM
+        
+        // THÊM 2 DÒNG NÀY ĐỂ DỌN DẸP BỘ NHỚ:
+        primaryConfig.setMaxLifetime(1800000); // Đóng và thay mới kết nối sau mỗi 30 phút (tránh bị treo ngầm)
+        primaryConfig.setIdleTimeout(600000);  // Trả bớt kết nối về hệ điều hành nếu rảnh rỗi quá 10 phút
+        
+        primaryConfig.setConnectionTimeout(3000); // Tương đương loginTimeout=3
+        primaryConfig.setDriverClassName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
 
         try {
-            // Bước 1: Thử gọi đến máy chủ chính
-            // System.out.println("[DB] Đang kết nối đến Database chính (192.168.4.2)...");
-            return DriverManager.getConnection(PRIMARY_DB_URL, PRIMARY_USER, PRIMARY_PASS);
+            primaryDataSource = new HikariDataSource(primaryConfig);
+        } catch (Exception e) {
+            System.err.println("[DB] Không thể khởi tạo Pool cho DB Chính.");
+        }
 
-        } catch (SQLException e) {
-            // Bước 2: Bắt lỗi nếu mạng rớt, chập chờn, hoặc máy chủ kia đang tắt
-            System.err.println("[DB] Kết nối DB chính thất bại: " + e.getMessage());
-            System.out.println("[DB] Đang tự động chuyển sang Database Local (localhost)...");
+        // Khởi tạo Pool tĩnh cho DB Local dự phòng
+        HikariConfig localConfig = new HikariConfig();
+        localConfig.setJdbcUrl(LOCAL_DB_URL);
+        localConfig.setUsername(LOCAL_USER);
+        localConfig.setPassword(LOCAL_PASS);
+        localConfig.setMaximumPoolSize(5);
+        localConfig.setDriverClassName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
 
-            // Lập tức gọi về máy Local
-            return DriverManager.getConnection(LOCAL_DB_URL, LOCAL_USER, LOCAL_PASS);
+        localDataSource = new HikariDataSource(localConfig);
+    }
+
+    public static Connection getConnection() throws SQLException {
+        try {
+            // Lấy reference kết nối từ Pool (trực tiếp từ RAM)
+            return primaryDataSource.getConnection();
+        } catch (SQLException | NullPointerException e) {
+            System.err.println("[DB] Kết nối DB chính thất bại, tự động chuyển sang Local...");
+            return localDataSource.getConnection();
         }
     }
 }
