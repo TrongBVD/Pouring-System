@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.List;
+import java.util.Locale;
 import utils.SecurityUtils;
 import model.AuditChainRow;
 
@@ -16,7 +17,7 @@ public class ChainVerificationService {
     // SQL style 126 (DATETIME2(7)): yyyy-MM-dd'T'HH:mm:ss.1234567
     private static final DateTimeFormatter TS_FMT = new DateTimeFormatterBuilder()
             .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
-            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 7, true)
+            .appendFraction(ChronoField.NANO_OF_SECOND, 7, 7, true)
             .toFormatter();
 
     // HÀM MỚI: QUÉT VÀ GẮN NHÃN CHO TẤT CẢ CÁC DÒNG (Không dùng return fail() nữa)
@@ -53,14 +54,27 @@ public class ChainVerificationService {
                         + "diff=" + diff;
 
                 // 3. Recompute & check Row Hash
-                String expectedRowHash = SecurityUtils.sha256HexUtf16LE(rowText);
-                if (!expectedRowHash.equals(row.getRowHash())) {
+                String expectedRowHash = SecurityUtils.sha256HexUtf16LE(rowText)
+                        .toUpperCase(Locale.ROOT);
+
+                String storedRowHash = row.getRowHash() == null
+                        ? null
+                        : row.getRowHash().trim().toUpperCase(Locale.ROOT);
+
+                if (!expectedRowHash.equals(storedRowHash)) {
                     row.setValid(false);
                     row.setTamperReason("ROW_HASH_MISMATCH");
+
+                    System.out.println("===== ROW HASH DEBUG =====");
+                    System.out.println("audit_id=" + row.getAuditId());
+                    System.out.println("rowText=[" + rowText + "]");
+                    System.out.println("expectedRowHash=" + expectedRowHash);
+                    System.out.println("storedRowHash  =" + storedRowHash);
+                    System.out.println("==========================");
+
                     isChainBroken = true;
                     continue;
                 }
-
                 // 4. Kiểm tra liên kết chuỗi (Prev Hash)
                 if (i == 0) {
                     if (row.getPrevHash() != null) {
@@ -82,9 +96,16 @@ public class ChainVerificationService {
                 }
 
                 // 5. Recompute & check Chain Hash
-                String chainInput = prevUsed + "|" + expectedRowHash;
-                String expectedChainHash = SecurityUtils.sha256HexUtf16LE(chainInput);
-                if (!expectedChainHash.equals(row.getChainHash())) {
+                String chainInput = prevUsed.trim().toUpperCase(Locale.ROOT) + "|" + expectedRowHash;
+
+                String expectedChainHash = SecurityUtils.sha256HexUtf16LE(chainInput)
+                        .toUpperCase(Locale.ROOT);
+
+                String storedChainHash = row.getChainHash() == null
+                        ? null
+                        : row.getChainHash().trim().toUpperCase(Locale.ROOT);
+
+                if (!expectedChainHash.equals(storedChainHash)) {
                     row.setValid(false);
                     row.setTamperReason("CHAIN_HASH_MISMATCH");
                     isChainBroken = true;

@@ -8,7 +8,7 @@ public class DBContext {
 
     // 1. Cấu hình Database chính (Máy trong mạng)
     // THÊM loginTimeout=3 để máy tự động bỏ cuộc sau 3s nếu mất mạng, không bị treo Web
-    private static final String PRIMARY_DB_URL = "jdbc:sqlserver://192.168.4.2:1433;databaseName=SmartWaterAuditDB;encrypt=true;trustServerCertificate=true;loginTimeout=3;";
+    private static final String PRIMARY_DB_URL = "jdbc:sqlserver://localhost\\SQL2022:1433;databaseName=SmartWaterAuditDB;encrypt=true;trustServerCertificate=true;loginTimeout=3;";
     private static final String PRIMARY_USER = "sa";
     private static final String PRIMARY_PASS = "12345";
 

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/XML/XMLDocument.xml to edit this template
+-->
+
+
+
+<root>
+    <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Smart Water TestNG Demo Suite"
+       verbose="2"
+       parallel="methods"
+       thread-count="4"
+       data-provider-thread-count="4">
+
+    <test name="Unit Tests">
+        <groups>
+            <run>
+                <include name="unit"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="test.SecurityUtilsTest"/>
+        </classes>
+    </test>
+
+    <test name="Parallel Data-Driven Demo">
+        <groups>
+            <run>
+                <include name="parallel"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="test.ParallelSecurityUtilsTest"/>
+        </classes>
+    </test>
+
+</suite>
+</root>
+
