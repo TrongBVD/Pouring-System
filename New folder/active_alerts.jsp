@@ -1,7 +1,7 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
         <title>Active Alerts</title>
         <link rel="stylesheet" href="css/style.css">
@@ -157,8 +157,9 @@
                         <input type="hidden" name="device_id" id="inputDeviceId" value="">
 
                         <div class="form-group">
-                            <label>Faulty hardware (Ticket Type):</label>
-                            <select name="ticket_type" class="form-control" required>
+                            <label for="ticketType">Faulty hardware (Ticket Type):</label>
+
+                            <select id="ticketType" name="ticket_type" class="form-control" required>
                                 <option value="VALVE">Load cell sensor / Pump (VALVE)</option>
                                 <option value="CLEAN">Pipe blockage / Dirt buildup (CLEAN)</option>
                                 <option value="FILTER">Water filter (FILTER)</option>
@@ -166,8 +167,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Corrective action (Action):</label>
-                            <select name="action_code" class="form-control" required>
+                            <label for="actionCode">Corrective action (Action):</label>
+                            <select id="actionCode" name="action_code" class="form-control" required>
                                 <option value="INSPECTED">INSPECTED - Inspection completed</option>
                                 <option value="CLEANED">CLEANED - Cleaned</option>
                                 <option value="FILTER_REPLACED">FILTER_REPLACED - Filter replaced</option>
@@ -181,8 +182,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Detailed note (Note):</label>
-                            <textarea name="note" class="form-control" rows="3" placeholder="Enter the reason or replaced components..." required></textarea>
+                            <label for="detailedNote">Detailed note (Note):</label>
+                            <textarea id="detailedNote" name="note" class="form-control" rows="3" placeholder="Enter the reason or replaced components..." required></textarea>
                         </div>
 
                         <div style="display:flex; justify-content:space-between; margin-top: 20px;">

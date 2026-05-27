@@ -21,7 +21,7 @@ public class ReportDAO {
                 + "al.action, al.object_type, al.object_id, al.diff_json "
                 + "FROM dbo.AuditLog al "
                 + "JOIN dbo.HashChain hc ON al.audit_id = hc.audit_id "
-                + "ORDER BY al.audit_id DESC";
+                + "ORDER BY al.audit_id ASC";
 
         try ( Connection conn = DBContext.getConnection();  PreparedStatement ps = conn.prepareStatement(sql);  ResultSet rs = ps.executeQuery()) {
 
