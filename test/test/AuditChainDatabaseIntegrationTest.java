@@ -12,6 +12,7 @@ import java.util.List;
 import model.AuditChainRow;
 import org.testng.Assert;
 import org.testng.SkipException;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import service.ChainVerificationService;
 import utils.DBContext;
@@ -21,6 +22,17 @@ import utils.DBContext;
  * @author qtang
  */
 public class AuditChainDatabaseIntegrationTest {
+
+    @BeforeClass(alwaysRun = true)
+    public void checkDatabaseConnection() {
+        try ( Connection conn = DBContext.getConnection()) {
+            if (conn == null || conn.isClosed()) {
+                throw new SkipException("Skipped: Không thể mở kết nối đến Database.");
+            }
+        } catch (Exception e) {
+            throw new SkipException("Skipped: Máy host chưa cài đặt SmartWaterAuditDB hoặc sai cấu hình. Bỏ qua Integration Test. Chi tiết: " + e.getMessage());
+        }
+    }
 
     @Test
     public void sqlAuditIntegrityShouldBeValid() {
